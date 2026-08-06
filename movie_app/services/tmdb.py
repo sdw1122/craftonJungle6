@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import requests
+from flask import current_app
 
 
 @dataclass
@@ -73,6 +74,14 @@ class TMDBClient:
             page=page,
         )
 
+    def get_popular_movies(self, page: int = 1) -> dict[str, Any]:
+        return self._get(
+            "/movie/popular",
+            language="ko-KR",
+            region="KR",
+            page=page,
+        )
+
     def get_movie(self, tmdb_id: int) -> dict[str, Any]:
         return self._get(
             f"/movie/{tmdb_id}",
@@ -88,6 +97,10 @@ class TMDBClient:
         if not path:
             return None
         return f"{cls.IMAGE_BASE_URL}/{size}{path}"
+
+
+def get_tmdb_client() -> TMDBClient:
+    return current_app.extensions["tmdb_client"]
 
 
 def normalize_search_movie(movie: dict[str, Any]) -> dict[str, Any]:
