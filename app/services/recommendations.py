@@ -263,6 +263,10 @@ class RecommendationService:
                 source = "ai"
                 model_name = self.ai.model
             except AIRecommendationError:
+                current_app.logger.warning(
+                    "OpenAI recommendation failed; falling back to rule scores.",
+                    exc_info=True,
+                )
                 ai_ranked = {}
 
         ranked = []

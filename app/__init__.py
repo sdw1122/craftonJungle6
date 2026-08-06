@@ -6,21 +6,23 @@ from flask import Flask, redirect, request, url_for
 from flask_login import current_user
 from jinja2 import ChoiceLoader, FileSystemLoader, PrefixLoader
 from sqlalchemy import URL
+from dotenv import load_dotenv
 
 from .extensions import db, login_manager, oauth
 from .ott_icons import DEFAULT_OTT_ICON, OTT_ICONS
 
 
 def create_app(test_config: dict[str, Any] | None = None) -> Flask:
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env", override=False)
     app = Flask(__name__)
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-change-me")
     app.config["SQLALCHEMY_DATABASE_URI"] = URL.create(
         "postgresql+psycopg",
-        username=os.getenv("DB_USER", "flask_user"),
-        password=os.getenv("DB_PASSWORD", "flask_password"),
+        username=os.getenv("DB_USER") or os.getenv("POSTGRES_USER", "flask_user"),
+        password=os.getenv("DB_PASSWORD") or os.getenv("POSTGRES_PASSWORD", "flask_password"),
         host=os.getenv("DB_HOST", "localhost"),
-        port=int(os.getenv("DB_PORT", "5432")),
-        database=os.getenv("DB_NAME", "flask_app"),
+        port=int(os.getenv("DB_PORT") or os.getenv("POSTGRES_PORT", "5432")),
+        database=os.getenv("DB_NAME") or os.getenv("POSTGRES_DB", "flask_app"),
     )
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["GOOGLE_CLIENT_ID"] = os.getenv("GOOGLE_CLIENT_ID")
