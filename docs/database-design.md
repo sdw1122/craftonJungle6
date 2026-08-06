@@ -29,6 +29,8 @@
 erDiagram
     USERS ||--o{ AUTH_ACCOUNTS : authenticates
     USERS ||--o{ USER_SESSIONS : owns
+    USERS ||--o{ USER_FAVORITE_GENRES : prefers
+    GENRES ||--o{ USER_FAVORITE_GENRES : selected
     USERS ||--o{ USER_OTT_SUBSCRIPTIONS : subscribes
     OTT_PROVIDERS ||--o{ USER_OTT_SUBSCRIPTIONS : selected
 
@@ -71,6 +73,9 @@ erDiagram
 | `email` | CITEXT | UNIQUE, NULL | 이메일 |
 | `nickname` | VARCHAR(50) | UNIQUE, NOT NULL | 닉네임 |
 | `status` | VARCHAR(20) | NOT NULL | `ACTIVE`, `BLOCKED`, `WITHDRAWN` |
+| `gender` | VARCHAR(20) | NULL | `MALE`, `FEMALE`, `OTHER`, `UNDISCLOSED` |
+| `birth_date` | DATE | NULL | 생년월일 |
+| `onboarding_completed_at` | TIMESTAMPTZ | NULL | 최초 질문 완료 시점 |
 | `email_verified_at` | TIMESTAMPTZ | NULL | 이메일 인증 시점 |
 | `last_login_at` | TIMESTAMPTZ | NULL | 마지막 로그인 시점 |
 | `created_at` | TIMESTAMPTZ | NOT NULL | 가입 시점 |
@@ -120,6 +125,24 @@ erDiagram
 | `revoked_at` | TIMESTAMPTZ | NULL | 로그아웃 또는 강제 만료 시점 |
 | `device_info` | JSONB | NULL | 기기 및 브라우저 정보 |
 | `created_at` | TIMESTAMPTZ | NOT NULL | 생성 시점 |
+
+### 3.4 `user_favorite_genres`
+
+회원가입 직후 선택한 선호 장르를 우선순위와 함께 저장한다.
+
+| 컬럼 | 타입 | 제약조건 | 설명 |
+|---|---|---|---|
+| `user_id` | UUID | PK, FK | 회원 ID |
+| `genre_id` | SMALLINT | PK, FK | 장르 ID |
+| `priority` | SMALLINT | NOT NULL, UNIQUE | 선호 순위 1~3 |
+| `created_at` | TIMESTAMPTZ | NOT NULL | 선택 시점 |
+
+```sql
+CHECK (priority BETWEEN 1 AND 3);
+UNIQUE (user_id, priority);
+```
+
+한 회원은 동일 장르를 중복 선택할 수 없고, 사용할 수 있는 우선순위가 1~3뿐이므로 최대 세 장르만 저장할 수 있다. 회원가입 API는 성별·생년월일과 1~3개의 장르를 하나의 트랜잭션으로 저장한 뒤 `onboarding_completed_at`을 기록한다.
 
 ---
 
@@ -484,6 +507,7 @@ ON ranking_snapshots
 |---|---|
 | 아이디·비밀번호 회원가입 및 로그인 | `users`, `auth_accounts`, `user_sessions` |
 | Google 소셜 로그인 | `users`, `auth_accounts`, `user_sessions` |
+| 최초 회원 질문 | `users`, `user_favorite_genres`, `genres` |
 | 구독 OTT 선택 | `ott_providers`, `user_ott_subscriptions` |
 | 찜하기, 보는 중, 봤어요 | `user_movie_library` |
 | OTT별 랭킹 | `ranking_snapshots`, `ranking_items` |
@@ -503,16 +527,18 @@ ON ranking_snapshots
 1. 인증 방식은 일반 아이디·비밀번호와 Google 로그인만 허용한다.
 2. 일반 로그인 비밀번호는 안전한 단방향 해시로만 저장한다.
 3. Google 계정은 검증된 `sub` 값을 기준으로 식별한다.
-4. 한 회원은 같은 영화를 한 번만 평가하며 기존 평가를 수정한다.
-5. 찜 여부와 시청 상태는 독립적으로 관리한다.
-6. 한 회원은 같은 OTT에 활성 구독을 두 개 이상 가질 수 없다.
-7. OTT 공개 상태는 저장하지 않고 공개 시작일과 종료일을 기준으로 계산한다.
-8. OTT별 랭킹은 날짜별 스냅샷으로 저장한다.
-9. 구독 OTT 추천에서는 `offer_type = 'SUBSCRIPTION'`인 영화만 기본 대상으로 한다.
-10. AI 추천 결과를 그대로 영구 노출하지 않고 `expires_at` 이후 다시 생성한다.
-11. 영화, 인물 및 OTT 데이터는 외부 API 수집 시 외부 ID를 기준으로 중복 생성을 방지한다.
-12. 영화 이미지는 `movies.poster_url` 하나만 저장한다.
-13. 사용자 탈퇴 시 개인정보는 삭제하거나 비식별화하고 관련 보존 정책을 별도로 정의한다.
+4. 최초 질문에서는 성별, 생년월일, 선호 장르 1~3개를 하나의 트랜잭션으로 저장한다.
+5. 성별에서 `UNDISCLOSED`를 선택할 수 있으며 생년월일은 미래 날짜를 허용하지 않는다.
+6. 한 회원은 같은 영화를 한 번만 평가하며 기존 평가를 수정한다.
+7. 찜 여부와 시청 상태는 독립적으로 관리한다.
+8. 한 회원은 같은 OTT에 활성 구독을 두 개 이상 가질 수 없다.
+9. OTT 공개 상태는 저장하지 않고 공개 시작일과 종료일을 기준으로 계산한다.
+10. OTT별 랭킹은 날짜별 스냅샷으로 저장한다.
+11. 구독 OTT 추천에서는 `offer_type = 'SUBSCRIPTION'`인 영화만 기본 대상으로 한다.
+12. AI 추천 결과를 그대로 영구 노출하지 않고 `expires_at` 이후 다시 생성한다.
+13. 영화, 인물 및 OTT 데이터는 외부 API 수집 시 외부 ID를 기준으로 중복 생성을 방지한다.
+14. 영화 이미지는 `movies.poster_url` 하나만 저장한다.
+15. 사용자 탈퇴 시 개인정보는 삭제하거나 비식별화하고 관련 보존 정책을 별도로 정의한다.
 
 ---
 
@@ -520,7 +546,7 @@ ON ranking_snapshots
 
 ### 1단계: 핵심 기능
 
-- `users`, `auth_accounts`, `user_sessions`
+- `users`, `auth_accounts`, `user_sessions`, `user_favorite_genres`
 - `movies`, `movie_titles`, `genres`, `movie_genres`
 - `people`, `person_names`, `movie_credits`
 - `ott_providers`, `ott_availabilities`

@@ -10,6 +10,11 @@ CREATE TABLE IF NOT EXISTS users (
     nickname VARCHAR(50) NOT NULL UNIQUE,
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'
         CHECK (status IN ('ACTIVE', 'BLOCKED', 'WITHDRAWN')),
+    gender VARCHAR(20)
+        CHECK (gender IS NULL OR gender IN ('MALE', 'FEMALE', 'OTHER', 'UNDISCLOSED')),
+    birth_date DATE
+        CHECK (birth_date IS NULL OR birth_date >= DATE '1900-01-01'),
+    onboarding_completed_at TIMESTAMPTZ,
     email_verified_at TIMESTAMPTZ,
     last_login_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -110,6 +115,15 @@ CREATE TABLE IF NOT EXISTS movie_genres (
     movie_id UUID NOT NULL REFERENCES movies(id) ON DELETE CASCADE,
     genre_id SMALLINT NOT NULL REFERENCES genres(id) ON DELETE RESTRICT,
     PRIMARY KEY (movie_id, genre_id)
+);
+
+CREATE TABLE IF NOT EXISTS user_favorite_genres (
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    genre_id SMALLINT NOT NULL REFERENCES genres(id) ON DELETE RESTRICT,
+    priority SMALLINT NOT NULL CHECK (priority BETWEEN 1 AND 3),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, genre_id),
+    UNIQUE (user_id, priority)
 );
 
 CREATE TABLE IF NOT EXISTS people (
@@ -262,6 +276,9 @@ CREATE INDEX IF NOT EXISTS idx_movie_credits_movie_type
 CREATE INDEX IF NOT EXISTS idx_movie_genres_genre
     ON movie_genres (genre_id, movie_id);
 
+CREATE INDEX IF NOT EXISTS idx_user_favorite_genres_genre
+    ON user_favorite_genres (genre_id, user_id);
+
 CREATE INDEX IF NOT EXISTS idx_availability_provider_period
     ON ott_availabilities
         (provider_id, region_code, offer_type, available_from, available_until);
@@ -291,6 +308,22 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION validate_user_birth_date()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.birth_date IS NOT NULL AND NEW.birth_date > CURRENT_DATE THEN
+        RAISE EXCEPTION 'birth_date cannot be in the future'
+            USING ERRCODE = '22007';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_users_birth_date ON users;
+CREATE TRIGGER trg_users_birth_date
+BEFORE INSERT OR UPDATE OF birth_date ON users
+FOR EACH ROW EXECUTE FUNCTION validate_user_birth_date();
 
 DROP TRIGGER IF EXISTS trg_users_updated_at ON users;
 CREATE TRIGGER trg_users_updated_at
