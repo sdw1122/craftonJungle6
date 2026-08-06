@@ -24,6 +24,12 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["GOOGLE_CLIENT_ID"] = os.getenv("GOOGLE_CLIENT_ID")
     app.config["GOOGLE_CLIENT_SECRET"] = os.getenv("GOOGLE_CLIENT_SECRET")
+    app.config["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+    app.config["OPENAI_MODEL"] = os.getenv("OPENAI_MODEL", "gpt-5.6-luna")
+    app.config["OPENAI_TIMEOUT_SECONDS"] = float(os.getenv("OPENAI_TIMEOUT_SECONDS", "20"))
+    app.config["RECOMMENDATION_TTL_HOURS"] = int(os.getenv("RECOMMENDATION_TTL_HOURS", "24"))
+    app.config["RECOMMENDATION_LIMIT"] = int(os.getenv("RECOMMENDATION_LIMIT", "10"))
+    app.config["RECOMMENDATION_CANDIDATE_LIMIT"] = int(os.getenv("RECOMMENDATION_CANDIDATE_LIMIT", "30"))
 
     if test_config:
         app.config.update(test_config)
@@ -55,9 +61,11 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     from .routes.onboarding import onboarding_bp
     from .routes.pages import pages_blueprint
     from .routes.reviews import reviews_bp
+    from .routes.recommendations import recommendations_bp
     from .routes.search import search_bp
     from .routes.wishlist import wishlist_bp
     from .services.tmdb import TMDBClient
+    from .cli import sync_popular_movies
 
     project_root = Path(__file__).resolve().parent.parent
     app.jinja_loader = ChoiceLoader([
@@ -67,6 +75,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         }),
     ])
     app.extensions["tmdb_client"] = TMDBClient(os.getenv("TMDB_ACCESS_TOKEN"))
+    app.cli.add_command(sync_popular_movies)
 
     app.register_blueprint(pages_blueprint)
     app.register_blueprint(api_blueprint)
@@ -75,6 +84,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     app.register_blueprint(onboarding_bp)
     app.register_blueprint(wishlist_bp)
     app.register_blueprint(reviews_bp)
+    app.register_blueprint(recommendations_bp)
     app.register_blueprint(search_bp)
 
     @app.before_request

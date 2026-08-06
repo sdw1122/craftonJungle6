@@ -82,6 +82,38 @@ class TMDBClient:
             page=page,
         )
 
+    def discover_movies(
+        self,
+        *,
+        page: int = 1,
+        genre_ids: list[int] | None = None,
+        watch_provider_id: int | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {
+            "language": "ko-KR",
+            "region": "KR",
+            "include_adult": "false",
+            "include_video": "false",
+            "sort_by": "popularity.desc",
+            "page": page,
+        }
+        if genre_ids:
+            params["with_genres"] = "|".join(str(genre_id) for genre_id in genre_ids)
+        if watch_provider_id is not None:
+            params.update({
+                "watch_region": "KR",
+                "with_watch_monetization_types": "flatrate",
+                "with_watch_providers": str(watch_provider_id),
+            })
+        return self._get("/discover/movie", **params)
+
+    def get_movie_watch_providers_catalog(self) -> dict[str, Any]:
+        return self._get(
+            "/watch/providers/movie",
+            language="ko-KR",
+            watch_region="KR",
+        )
+
     def get_movie(self, tmdb_id: int) -> dict[str, Any]:
         return self._get(
             f"/movie/{tmdb_id}",

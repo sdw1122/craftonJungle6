@@ -31,8 +31,9 @@
       {% endif %}
     {% endwith %}
 
-    <main class="container">
+    <main class="container{% block main_class %}{% endblock %}">
       {% block content %}{% endblock %}
     </main>
+    {% block scripts %}{% endblock %}
   </body>
 </html>
