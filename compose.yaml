@@ -25,12 +25,16 @@ services:
     volumes:
       - .:/app
     environment:
+      FLASK_APP: app
       FLASK_DEBUG: "1"
       DB_HOST: db
       DB_PORT: "5432"
       DB_NAME: ${POSTGRES_DB:-flask_app}
       DB_USER: ${POSTGRES_USER:-flask_user}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-flask_password}
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-change-me}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
     depends_on:
       db:
         condition: service_healthy
