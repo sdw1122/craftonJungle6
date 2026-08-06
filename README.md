@@ -5,7 +5,6 @@
 Docker Desktop을 실행한 뒤 프로젝트 폴더에서 다음 명령을 실행합니다.
 
 ```powershell
-Copy-Item .env.example .env
 docker compose up --build
 ```
 
