@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }} - 키노라이츠{% endblock %}
+{% block content %}
+  <section class="library-page">
+    <h1>{{ page_title }}</h1>
+
+    <div class="library-tabs">
+      {% for value, label in tabs.items() %}
+        <a href="{{ url_for('wishlist.library', status=value) }}"
+          class="library-tab{{ ' active' if status == value else '' }}">{{ label }}</a>
+      {% endfor %}
+    </div>
+
+    <p class="library-count">{{ items|length }}편</p>
+
+    {% if items %}
+      <div class="library-grid">
+        {% for item in items %}
+          <a class="library-card" href="{{ url_for('pages.movie_detail', tmdb_id=item.movie.tmdb_id) }}">
+            {% if item.movie.poster_url %}
+              <img src="{{ item.movie.poster_url }}" alt="{{ item.movie.original_title }} 포스터" class="library-poster">
+            {% else %}
+              <div class="library-poster library-poster-placeholder">포스터 없음</div>
+            {% endif %}
+            <div class="library-card-info">
+              <strong>{{ item.movie.original_title }}</strong>
+              {% if item.movie.release_date %}
+                <span class="library-year">{{ item.movie.release_date.year }}</span>
+              {% endif %}
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="helper-text">아직 담긴 콘텐츠가 없어요.</p>
+    {% endif %}
+  </section>
+{% endblock %}

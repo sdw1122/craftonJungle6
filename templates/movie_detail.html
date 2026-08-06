@@ -60,19 +60,114 @@
         <p>{{ movie.overview or '등록된 줄거리가 없습니다.' }}</p>
       </section>
 
+      {% set movie_fields %}
+        <input type="hidden" name="title" value="{{ movie.title or movie.original_title or '' }}">
+        <input type="hidden" name="overview" value="{{ movie.overview or '' }}">
+        <input type="hidden" name="release_date" value="{{ movie.release_date or '' }}">
+        <input type="hidden" name="poster_url" value="{{ movie.poster_url or '' }}">
+      {% endset %}
+
       <section class="detail-section action-section" aria-labelledby="movie-actions-title">
         <h2 id="movie-actions-title">내 영화 상태</h2>
-        <p class="helper-text">저장 기능은 준비 중입니다.</p>
-        <div class="action-buttons">
-          <button type="button" disabled>찜</button>
-          <button type="button" disabled>보는 중</button>
-          <button type="button" disabled>봤어요</button>
-        </div>
-        <div class="rating-buttons" aria-label="별점 선택 준비 중">
-          {% for score in range(1, 6) %}
-            <button type="button" disabled aria-label="{{ score }}점">{{ score }}점</button>
-          {% endfor %}
-        </div>
+
+        {% if current_user.is_authenticated %}
+          <div class="action-buttons">
+            <form method="post" action="{{ url_for('wishlist.upsert', tmdb_id=movie.tmdb_id) }}" class="inline-form">
+              {{ movie_fields | safe }}
+              <input type="hidden" name="is_wishlisted" value="{{ 'false' if library_status and library_status.is_wishlisted else 'true' }}">
+              <button type="submit" class="{{ 'active' if library_status and library_status.is_wishlisted else '' }}">찜</button>
+            </form>
+
+            <form method="post" action="{{ url_for('wishlist.upsert', tmdb_id=movie.tmdb_id) }}" class="inline-form">
+              {{ movie_fields | safe }}
+              <input type="hidden" name="watch_status" value="{{ '' if library_status and library_status.watch_status == 'WATCHING' else 'WATCHING' }}">
+              <button type="submit" class="{{ 'active' if library_status and library_status.watch_status == 'WATCHING' else '' }}">보는 중</button>
+            </form>
+
+            <form method="post" action="{{ url_for('wishlist.upsert', tmdb_id=movie.tmdb_id) }}" class="inline-form">
+              {{ movie_fields | safe }}
+              <input type="hidden" name="watch_status" value="{{ '' if library_status and library_status.watch_status == 'WATCHED' else 'WATCHED' }}">
+              <button type="submit" class="{{ 'active' if library_status and library_status.watch_status == 'WATCHED' else '' }}">봤어요</button>
+            </form>
+          </div>
+
+        {% else %}
+          <p class="helper-text">로그인하면 찜, 시청 상태, 별점을 기록할 수 있어요.</p>
+          <div class="action-buttons">
+            <button type="button" disabled>찜</button>
+            <button type="button" disabled>보는 중</button>
+            <button type="button" disabled>봤어요</button>
+          </div>
+        {% endif %}
+      </section>
+
+      <section class="detail-section review-form-section" aria-labelledby="review-form-title">
+        <h2 id="review-form-title">별점 &amp; 리뷰</h2>
+
+        {% if current_user.is_authenticated %}
+          <form method="post" action="{{ url_for('reviews.upsert', tmdb_id=movie.tmdb_id) }}" class="review-form">
+            {{ movie_fields | safe }}
+
+            <div class="rating-buttons" role="radiogroup" aria-label="별점 선택">
+              {% for score in range(1, 6) %}
+                <label class="rating-radio">
+                  <input type="radio" name="rating" value="{{ score }}"
+                    {{ "checked" if my_review and my_review.rating == score else "" }} required>
+                  <span>{{ score }}점</span>
+                </label>
+              {% endfor %}
+            </div>
+
+            <textarea name="content" class="review-textarea" rows="4"
+              placeholder="이 영화에 대한 생각을 남겨주세요.">{{ my_review.content if my_review else "" }}</textarea>
+
+            <label class="spoiler-checkbox">
+              <input type="checkbox" name="contains_spoiler" value="true"
+                {{ "checked" if my_review and my_review.contains_spoiler else "" }}>
+              <span>스포일러 포함</span>
+            </label>
+
+            <button type="submit" class="button review-submit">
+              {{ "리뷰 수정하기" if my_review else "리뷰 남기기" }}
+            </button>
+          </form>
+        {% else %}
+          <p class="helper-text">로그인하면 별점과 리뷰를 남길 수 있어요.</p>
+          <div class="rating-buttons" aria-label="별점 선택 준비 중">
+            {% for score in range(1, 6) %}
+              <button type="button" disabled aria-label="{{ score }}점">{{ score }}점</button>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </section>
+
+      <section class="detail-section reviews-list-section" aria-labelledby="reviews-list-title">
+        <h2 id="reviews-list-title">관람객 리뷰 ({{ reviews|length }})</h2>
+
+        {% if reviews %}
+          <ul class="review-list">
+            {% for review in reviews %}
+              <li class="review-item{{ ' review-item-mine' if current_user.is_authenticated and review.user_id == current_user.id else '' }}">
+                <div class="review-item-header">
+                  <strong>{{ review.user.nickname }}</strong>
+                  <span class="review-item-rating">★ {{ review.rating }}</span>
+                </div>
+                {% if review.content %}
+                  {% if review.contains_spoiler %}
+                    <details class="review-spoiler">
+                      <summary>스포일러가 포함된 리뷰입니다 — 클릭해서 보기</summary>
+                      <p>{{ review.content }}</p>
+                    </details>
+                  {% else %}
+                    <p>{{ review.content }}</p>
+                  {% endif %}
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="helper-text">아직 등록된 리뷰가 없어요. 첫 리뷰를 남겨보세요!</p>
+        {% endif %}
       </section>
     </div>
   </article>

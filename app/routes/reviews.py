@@ -1,10 +1,11 @@
 from datetime import datetime
 
-from flask import Blueprint, abort, jsonify, request
+from flask import Blueprint, abort, jsonify, redirect, request, url_for
 from flask_login import current_user, login_required
 
 from ..extensions import db
-from ..models import MovieReview
+from ..models import Movie, MovieReview
+from ..movie_sync import get_or_create_movie
 
 reviews_bp = Blueprint("reviews", __name__, url_prefix="/reviews")
 
@@ -18,9 +19,9 @@ def _serialize(review: MovieReview) -> dict:
     }
 
 
-@reviews_bp.route("/<uuid:movie_id>", methods=["POST"])
+@reviews_bp.route("/<int:tmdb_id>", methods=["POST"])
 @login_required
-def upsert(movie_id):
+def upsert(tmdb_id: int):
     payload = request.get_json(silent=True) or request.form
 
     try:
@@ -31,9 +32,17 @@ def upsert(movie_id):
     if not 0.5 <= rating <= 5 or (rating * 2) % 1 != 0:
         abort(400, description="rating은 0.5~5.0 사이의 0.5 단위 값이어야 합니다.")
 
-    review = MovieReview.query.filter_by(user_id=current_user.id, movie_id=movie_id).first()
+    movie = get_or_create_movie(
+        tmdb_id=tmdb_id,
+        title=payload.get("title"),
+        overview=payload.get("overview"),
+        release_date=payload.get("release_date"),
+        poster_url=payload.get("poster_url"),
+    )
+
+    review = MovieReview.query.filter_by(user_id=current_user.id, movie_id=movie.id).first()
     if review is None:
-        review = MovieReview(user_id=current_user.id, movie_id=movie_id)
+        review = MovieReview(user_id=current_user.id, movie_id=movie.id)
         db.session.add(review)
 
     review.rating_half_steps = int(rating * 2)
@@ -44,13 +53,19 @@ def upsert(movie_id):
     review.updated_at = datetime.utcnow()
     db.session.commit()
 
-    return jsonify(_serialize(review))
+    if request.is_json:
+        return jsonify(_serialize(review))
+
+    return redirect(request.referrer or url_for("pages.index"))
 
 
-@reviews_bp.route("/<uuid:movie_id>", methods=["DELETE"])
+@reviews_bp.route("/<int:tmdb_id>", methods=["DELETE"])
 @login_required
-def delete(movie_id):
-    review = MovieReview.query.filter_by(user_id=current_user.id, movie_id=movie_id).first()
+def delete(tmdb_id: int):
+    movie = Movie.query.filter_by(tmdb_id=tmdb_id).first()
+    if movie is None:
+        abort(404)
+    review = MovieReview.query.filter_by(user_id=current_user.id, movie_id=movie.id).first()
     if review is None:
         abort(404)
     db.session.delete(review)

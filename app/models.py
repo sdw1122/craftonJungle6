@@ -144,7 +144,6 @@ class UserMovieLibrary(db.Model):
     WATCH_STATUSES = ("WATCHING", "WATCHED")
 
     user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
-    # movies 테이블은 C 담당 — 이 파일에서는 Movie 모델을 정의하지 않고 FK 컬럼만 참조
     movie_id = db.Column(UUID(as_uuid=True), db.ForeignKey("movies.id", ondelete="CASCADE"), primary_key=True)
     is_wishlisted = db.Column(db.Boolean, nullable=False, default=False)
     watch_status = db.Column(db.String(20))
@@ -166,6 +165,8 @@ class MovieReview(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), server_default=db.text("CURRENT_TIMESTAMP"))
     updated_at = db.Column(db.DateTime(timezone=True), server_default=db.text("CURRENT_TIMESTAMP"))
     deleted_at = db.Column(db.DateTime(timezone=True))
+
+    user = db.relationship("User")
 
     @property
     def rating(self) -> float:
