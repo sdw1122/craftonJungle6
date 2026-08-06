@@ -1,9 +1,16 @@
 import os
 
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import URL, text
 from sqlalchemy.exc import SQLAlchemyError
+
+from tmdb_client import (
+    TMDBClient,
+    TMDBError,
+    normalize_movie_detail,
+    normalize_search_movie,
+)
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = URL.create(
@@ -17,6 +24,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = URL.create(
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
+tmdb = TMDBClient(os.getenv("TMDB_ACCESS_TOKEN"))
 
 
 def database_is_ready() -> bool:
@@ -46,4 +54,42 @@ def health():
     return jsonify({
         "status": "ok" if database_ready else "error",
         "database": "connected" if database_ready else "disconnected",
+        "tmdb": "configured" if tmdb.is_configured else "not_configured",
     }), 200 if database_ready else 503
+
+
+@app.get("/api/tmdb/movies/search")
+def search_tmdb_movies():
+    query = request.args.get("query", "").strip()
+    page = request.args.get("page", default=1, type=int)
+
+    if not query:
+        return jsonify({"message": "검색어를 입력해 주세요."}), 400
+    if page is None or page < 1 or page > 500:
+        return jsonify({"message": "page는 1부터 500 사이여야 합니다."}), 400
+
+    try:
+        result = tmdb.search_movies(query, page)
+    except TMDBError as exc:
+        return jsonify({"message": exc.message}), exc.status_code
+
+    return jsonify({
+        "page": result.get("page", page),
+        "total_pages": result.get("total_pages", 0),
+        "total_results": result.get("total_results", 0),
+        "movies": [
+            normalize_search_movie(movie)
+            for movie in result.get("results", [])
+        ],
+    })
+
+
+@app.get("/api/tmdb/movies/<int:tmdb_id>")
+def get_tmdb_movie(tmdb_id: int):
+    try:
+        movie = tmdb.get_movie(tmdb_id)
+        providers = tmdb.get_watch_providers(tmdb_id)
+    except TMDBError as exc:
+        return jsonify({"message": exc.message}), exc.status_code
+
+    return jsonify(normalize_movie_detail(movie, providers))

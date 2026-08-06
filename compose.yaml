@@ -31,6 +31,7 @@ services:
       DB_NAME: ${POSTGRES_DB:-flask_app}
       DB_USER: ${POSTGRES_USER:-flask_user}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-flask_password}
+      TMDB_ACCESS_TOKEN: ${TMDB_ACCESS_TOKEN:-}
     depends_on:
       db:
         condition: service_healthy
