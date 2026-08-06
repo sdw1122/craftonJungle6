@@ -1,7 +1,7 @@
 import unittest
 
-import app as app_module
-from movie_app.services.tmdb import TMDBError
+from app import create_app
+from app.services.tmdb import TMDBError
 
 
 class FakeTMDBClient:
@@ -100,14 +100,14 @@ class FakeTMDBClient:
 
 class PageTests(unittest.TestCase):
     def setUp(self):
-        app_module.app.config.update(TESTING=True)
-        self.client = app_module.app.test_client()
+        self.app = create_app({"TESTING": True})
+        self.client = self.app.test_client()
         self.fake_tmdb = FakeTMDBClient()
-        self.original_tmdb = app_module.app.extensions["tmdb_client"]
-        app_module.app.extensions["tmdb_client"] = self.fake_tmdb
+        self.original_tmdb = self.app.extensions["tmdb_client"]
+        self.app.extensions["tmdb_client"] = self.fake_tmdb
 
     def tearDown(self):
-        app_module.app.extensions["tmdb_client"] = self.original_tmdb
+        self.app.extensions["tmdb_client"] = self.original_tmdb
 
     def test_root_renders_popular_movies_and_fallbacks(self):
         response = self.client.get("/")

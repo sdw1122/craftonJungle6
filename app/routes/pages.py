@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request
 
-from movie_app.services.tmdb import (
+from ..services.tmdb import (
     TMDBError,
     get_tmdb_client,
     normalize_movie_detail,
@@ -18,7 +18,7 @@ def index():
 
     if page is None or page < 1 or page > 500:
         return render_template(
-            "index.html",
+            "movies/index.html",
             movies=[],
             query=query,
             page=1,
@@ -36,7 +36,7 @@ def index():
         )
     except TMDBError as exc:
         return render_template(
-            "index.html",
+            "movies/index.html",
             movies=[],
             query=query,
             page=page,
@@ -46,7 +46,7 @@ def index():
         ), exc.status_code
 
     return render_template(
-        "index.html",
+        "movies/index.html",
         movies=[
             normalize_search_movie(movie)
             for movie in result.get("results", [])
@@ -67,12 +67,12 @@ def movie_detail(tmdb_id: int):
         providers = tmdb.get_watch_providers(tmdb_id)
     except TMDBError as exc:
         return render_template(
-            "error.html",
+            "movies/error.html",
             status_code=exc.status_code,
             message=exc.message,
         ), exc.status_code
 
     return render_template(
-        "movie_detail.html",
+        "movies/movie_detail.html",
         movie=normalize_movie_detail(movie, providers),
     )

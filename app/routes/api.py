@@ -2,8 +2,8 @@ from flask import Blueprint, jsonify, request
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
-from movie_app.extensions import db
-from movie_app.services.tmdb import (
+from ..extensions import db
+from ..services.tmdb import (
     TMDBError,
     get_tmdb_client,
     normalize_movie_detail,
@@ -11,7 +11,7 @@ from movie_app.services.tmdb import (
 )
 
 
-api_blueprint = Blueprint("api", __name__)
+api_blueprint = Blueprint("api", __name__, url_prefix="/api")
 
 
 def database_is_ready() -> bool:
@@ -39,7 +39,7 @@ def health():
     }), 200 if database_ready else 503
 
 
-@api_blueprint.get("/api/tmdb/movies/search")
+@api_blueprint.get("/tmdb/movies/search")
 def search_tmdb_movies():
     query = request.args.get("query", "").strip()
     page = request.args.get("page", default=1, type=int)
@@ -65,7 +65,7 @@ def search_tmdb_movies():
     })
 
 
-@api_blueprint.get("/api/tmdb/movies/<int:tmdb_id>")
+@api_blueprint.get("/tmdb/movies/<int:tmdb_id>")
 def get_tmdb_movie(tmdb_id: int):
     tmdb = get_tmdb_client()
     try:
