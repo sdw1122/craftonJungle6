@@ -1,5 +1,6 @@
 import unittest
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -321,6 +322,16 @@ class RecommendationHomeTests(unittest.TestCase):
         self.assertIn("정글님을 위한 추천", html)
         self.assertIn("/api/recommendations", html)
         self.assertIn("js/recommendations.js", html)
+        self.assertIn("추천받기", html)
+
+    def test_home_recommendations_only_generate_after_button_click(self):
+        script_path = Path(__file__).resolve().parents[1] / "app" / "static" / "js" / "recommendations.js"
+        script = script_path.read_text(encoding="utf-8")
+
+        self.assertNotIn("load();", script)
+        self.assertNotIn("data.getUrl", script)
+        self.assertIn('refresh.addEventListener("click", () => generate(true));', script)
+        self.assertIn('setState("empty");', script)
 
 
 if __name__ == "__main__":

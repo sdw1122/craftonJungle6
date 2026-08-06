@@ -8,7 +8,6 @@
   const empty = section.querySelector("#recommendation-empty");
   const meta = section.querySelector("#recommendation-meta");
   const refresh = section.querySelector("#recommendation-refresh");
-  const getUrl = section.dataset.getUrl;
   const postUrl = section.dataset.postUrl;
 
   function setState(state) {
@@ -128,21 +127,6 @@
     }
   }
 
-  async function load() {
-    setState("loading");
-    try {
-      const cached = await request(getUrl);
-      if (cached.recommendations?.length) {
-        render(cached);
-      } else {
-        await generate(false);
-      }
-    } catch (requestError) {
-      error.querySelector("span").textContent = requestError.message;
-      setState("error");
-    }
-  }
-
   refresh.addEventListener("click", () => generate(true));
-  load();
+  setState("empty");
 })();
