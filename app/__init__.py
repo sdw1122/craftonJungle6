@@ -1,33 +1,68 @@
 import os
-from pathlib import Path
-from typing import Any
 
-from flask import Flask
+from flask import Flask, redirect, request, url_for
+from flask_login import current_user
+from sqlalchemy import URL
 
-from movie_app.config import database_uri
-from movie_app.extensions import db
-from movie_app.routes.api import api_blueprint
-from movie_app.routes.pages import pages_blueprint
-from movie_app.services.tmdb import TMDBClient
+from .extensions import db, login_manager, oauth
 
 
-def create_app(test_config: dict[str, Any] | None = None) -> Flask:
-    project_root = Path(__file__).resolve().parent.parent
-    app = Flask(
-        __name__,
-        template_folder=str(project_root / "templates"),
-        static_folder=str(project_root / "static"),
+def create_app() -> Flask:
+    app = Flask(__name__)
+    app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-change-me")
+    app.config["SQLALCHEMY_DATABASE_URI"] = URL.create(
+        "postgresql+psycopg",
+        username=os.getenv("DB_USER", "flask_user"),
+        password=os.getenv("DB_PASSWORD", "flask_password"),
+        host=os.getenv("DB_HOST", "localhost"),
+        port=int(os.getenv("DB_PORT", "5432")),
+        database=os.getenv("DB_NAME", "flask_app"),
     )
-    app.config.from_mapping(
-        SQLALCHEMY_DATABASE_URI=database_uri(),
-        SQLALCHEMY_TRACK_MODIFICATIONS=False,
-    )
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    app.config["GOOGLE_CLIENT_ID"] = os.getenv("GOOGLE_CLIENT_ID")
+    app.config["GOOGLE_CLIENT_SECRET"] = os.getenv("GOOGLE_CLIENT_SECRET")
 
-    if test_config:
-        app.config.update(test_config)
-
+    # 스키마는 db/init/*.sql이 기준(source of truth)입니다.
+    # Flask-Migrate/db.create_all()은 사용하지 않습니다 — 여기서는 기존 테이블에 매핑만 합니다.
     db.init_app(app)
-    app.extensions["tmdb_client"] = TMDBClient(os.getenv("TMDB_ACCESS_TOKEN"))
-    app.register_blueprint(pages_blueprint)
-    app.register_blueprint(api_blueprint)
+    login_manager.init_app(app)
+    login_manager.login_view = "auth.login"
+
+    oauth.init_app(app)
+    oauth.register(
+        name="google",
+        client_id=app.config["GOOGLE_CLIENT_ID"],
+        client_secret=app.config["GOOGLE_CLIENT_SECRET"],
+        server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+        client_kwargs={"scope": "openid email profile"},
+    )
+
+    from . import models
+
+    @login_manager.user_loader
+    def load_user(user_id):
+        return db.session.get(models.User, user_id)
+
+    from .routes.auth import auth_bp
+    from .routes.main import main_bp
+    from .routes.onboarding import onboarding_bp
+    from .routes.reviews import reviews_bp
+    from .routes.wishlist import wishlist_bp
+
+    app.register_blueprint(main_bp)
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(onboarding_bp)
+    app.register_blueprint(wishlist_bp)
+    app.register_blueprint(reviews_bp)
+
+    @app.before_request
+    def enforce_onboarding():
+        if not current_user.is_authenticated:
+            return None
+        if request.blueprint == "onboarding" or request.endpoint in ("auth.logout", "static"):
+            return None
+        if current_user.needs_onboarding:
+            return redirect(url_for("onboarding.intro"))
+        return None
+
     return app

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}구독 OTT 선택 - 키노라이츠{% endblock %}
+{% block content %}
+  <section class="card onboarding-card">
+    <div class="progress-bar"><span style="width: 100%"></span></div>
+    <h1>구독 중인 서비스를 알려주세요</h1>
+    <p class="description">여러 개 선택할 수 있어요.</p>
+
+    <form method="post" class="onboarding-form">
+      <div class="ott-grid">
+        {% for provider in otts %}
+          {% set icon = icons.get(provider.code, default_icon) %}
+          <label class="ott-item">
+            <input type="checkbox" name="provider_id" value="{{ provider.id }}">
+            <span class="ott-icon" style="background: {{ icon.color }}">{{ icon.text }}</span>
+            <span class="ott-name">{{ provider.name }}</span>
+          </label>
+        {% endfor %}
+      </div>
+
+      <div class="onboarding-nav">
+        <a class="button button-secondary" href="{{ url_for('onboarding.genres') }}">이전</a>
+        <button type="submit" class="button">완료하기</button>
+      </div>
+    </form>
+  </section>
+{% endblock %}

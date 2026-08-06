@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}회원가입 - 키노라이츠{% endblock %}
+{% block content %}
+  <section class="card auth-card">
+    <h1>회원가입</h1>
+    <form method="post" class="auth-form">
+      <label>
+        이메일
+        <input type="email" name="email" required autofocus>
+      </label>
+      <label>
+        닉네임
+        <input type="text" name="nickname" required>
+      </label>
+      <label>
+        비밀번호
+        <input type="password" name="password" required minlength="8">
+      </label>
+      <button type="submit" class="button">가입하기</button>
+    </form>
+
+    <div class="divider"><span>또는</span></div>
+    <a class="button button-google" href="{{ url_for('auth.google_login') }}">구글로 계속하기</a>
+
+    <p class="auth-switch">
+      이미 계정이 있으신가요? <a href="{{ url_for('auth.login') }}">로그인</a>
+    </p>
+  </section>
+{% endblock %}
