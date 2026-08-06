@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from flask_login import UserMixin
-from sqlalchemy.dialects.postgresql import CITEXT, UUID
+from sqlalchemy.dialects.postgresql import CITEXT, JSONB, UUID
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from .extensions import db
@@ -101,13 +101,49 @@ class UserOTTSubscription(db.Model):
     provider = db.relationship("OTTProvider")
 
 
+class Movie(db.Model):
+    __tablename__ = "movies"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, server_default=db.text("gen_random_uuid()"))
+    tmdb_id = db.Column(db.BigInteger, unique=True)
+    original_title = db.Column(db.String(300), nullable=False)
+    overview = db.Column(db.Text)
+    release_date = db.Column(db.Date)
+    runtime_minutes = db.Column(db.SmallInteger)
+    original_language = db.Column(db.String(10))
+    age_rating = db.Column(db.String(20))
+    poster_url = db.Column(db.Text)
+    created_at = db.Column(db.DateTime(timezone=True), server_default=db.text("CURRENT_TIMESTAMP"))
+    updated_at = db.Column(db.DateTime(timezone=True), server_default=db.text("CURRENT_TIMESTAMP"))
+
+
+class MovieTitle(db.Model):
+    __tablename__ = "movie_titles"
+
+    id = db.Column(db.BigInteger, primary_key=True)
+    movie_id = db.Column(UUID(as_uuid=True), db.ForeignKey("movies.id", ondelete="CASCADE"), nullable=False)
+    locale = db.Column(db.String(10), nullable=False)
+    title = db.Column(db.String(300), nullable=False)
+    title_type = db.Column(db.String(20), nullable=False)
+
+    movie = db.relationship("Movie", backref="titles")
+
+
+class MovieGenre(db.Model):
+    __tablename__ = "movie_genres"
+
+    movie_id = db.Column(UUID(as_uuid=True), db.ForeignKey("movies.id", ondelete="CASCADE"), primary_key=True)
+    genre_id = db.Column(db.SmallInteger, db.ForeignKey("genres.id", ondelete="RESTRICT"), primary_key=True)
+
+    genre = db.relationship("Genre")
+
+
 class UserMovieLibrary(db.Model):
     __tablename__ = "user_movie_library"
 
     WATCH_STATUSES = ("WATCHING", "WATCHED")
 
     user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
-    # movies 테이블은 C 담당 — 이 파일에서는 Movie 모델을 정의하지 않고 FK 컬럼만 참조
     movie_id = db.Column(UUID(as_uuid=True), db.ForeignKey("movies.id", ondelete="CASCADE"), primary_key=True)
     is_wishlisted = db.Column(db.Boolean, nullable=False, default=False)
     watch_status = db.Column(db.String(20))
@@ -130,6 +166,47 @@ class MovieReview(db.Model):
     updated_at = db.Column(db.DateTime(timezone=True), server_default=db.text("CURRENT_TIMESTAMP"))
     deleted_at = db.Column(db.DateTime(timezone=True))
 
+    user = db.relationship("User")
+
     @property
     def rating(self) -> float:
         return self.rating_half_steps / 2
+
+
+class RecommendationRun(db.Model):
+    __tablename__ = "recommendation_runs"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, server_default=db.text("gen_random_uuid()"))
+    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    provider_id = db.Column(db.SmallInteger, db.ForeignKey("ott_providers.id", ondelete="SET NULL"))
+    recommendation_type = db.Column(db.String(30), nullable=False)
+    model_name = db.Column(db.String(100), nullable=False)
+    feature_version = db.Column(db.String(50), nullable=False)
+    context = db.Column(JSONB)
+    generated_at = db.Column(db.DateTime(timezone=True), server_default=db.text("CURRENT_TIMESTAMP"), nullable=False)
+    expires_at = db.Column(db.DateTime(timezone=True), nullable=False)
+
+    items = db.relationship(
+        "RecommendationItem",
+        back_populates="run",
+        cascade="all, delete-orphan",
+        order_by="RecommendationItem.rank",
+    )
+
+
+class RecommendationItem(db.Model):
+    __tablename__ = "recommendation_items"
+
+    run_id = db.Column(
+        UUID(as_uuid=True),
+        db.ForeignKey("recommendation_runs.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    movie_id = db.Column(UUID(as_uuid=True), db.ForeignKey("movies.id", ondelete="CASCADE"), primary_key=True)
+    rank = db.Column(db.SmallInteger, nullable=False)
+    score = db.Column(db.Numeric(8, 6), nullable=False)
+    reason_text = db.Column(db.String(500))
+    reason_codes = db.Column(JSONB)
+
+    run = db.relationship("RecommendationRun", back_populates="items")
+    movie = db.relationship("Movie")

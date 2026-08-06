@@ -8,6 +8,7 @@ from jinja2 import ChoiceLoader, FileSystemLoader, PrefixLoader
 from sqlalchemy import URL
 
 from .extensions import db, login_manager, oauth
+from .ott_icons import DEFAULT_OTT_ICON, OTT_ICONS
 
 
 def create_app(test_config: dict[str, Any] | None = None) -> Flask:
@@ -24,6 +25,12 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["GOOGLE_CLIENT_ID"] = os.getenv("GOOGLE_CLIENT_ID")
     app.config["GOOGLE_CLIENT_SECRET"] = os.getenv("GOOGLE_CLIENT_SECRET")
+    app.config["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+    app.config["OPENAI_MODEL"] = os.getenv("OPENAI_MODEL", "gpt-5.6-luna")
+    app.config["OPENAI_TIMEOUT_SECONDS"] = float(os.getenv("OPENAI_TIMEOUT_SECONDS", "20"))
+    app.config["RECOMMENDATION_TTL_HOURS"] = int(os.getenv("RECOMMENDATION_TTL_HOURS", "24"))
+    app.config["RECOMMENDATION_LIMIT"] = int(os.getenv("RECOMMENDATION_LIMIT", "10"))
+    app.config["RECOMMENDATION_CANDIDATE_LIMIT"] = int(os.getenv("RECOMMENDATION_CANDIDATE_LIMIT", "30"))
 
     if test_config:
         app.config.update(test_config)
@@ -49,15 +56,18 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def load_user(user_id):
         return db.session.get(models.User, user_id)
 
+    from .routes.account import account_bp
     from .routes.auth import auth_bp
     from .routes.api import api_blueprint
     from .routes.main import main_bp
     from .routes.onboarding import onboarding_bp
     from .routes.pages import pages_blueprint
     from .routes.reviews import reviews_bp
+    from .routes.recommendations import recommendations_bp
     from .routes.search import search_bp
     from .routes.wishlist import wishlist_bp
     from .services.tmdb import TMDBClient
+    from .cli import sync_popular_movies
 
     project_root = Path(__file__).resolve().parent.parent
     app.jinja_loader = ChoiceLoader([
@@ -67,15 +77,52 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         }),
     ])
     app.extensions["tmdb_client"] = TMDBClient(os.getenv("TMDB_ACCESS_TOKEN"))
+    app.cli.add_command(sync_popular_movies)
 
     app.register_blueprint(pages_blueprint)
     app.register_blueprint(api_blueprint)
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(onboarding_bp)
+    app.register_blueprint(account_bp)
     app.register_blueprint(wishlist_bp)
     app.register_blueprint(reviews_bp)
+    app.register_blueprint(recommendations_bp)
     app.register_blueprint(search_bp)
+
+    @app.context_processor
+    def inject_header_data():
+        if not current_user.is_authenticated:
+            return {}
+
+        wishlist_counts = {
+            "wishlisted": models.UserMovieLibrary.query.filter_by(
+                user_id=current_user.id, is_wishlisted=True
+            ).count(),
+            "watching": models.UserMovieLibrary.query.filter_by(
+                user_id=current_user.id, watch_status="WATCHING"
+            ).count(),
+            "watched": models.UserMovieLibrary.query.filter_by(
+                user_id=current_user.id, watch_status="WATCHED"
+            ).count(),
+        }
+        my_ott_subscriptions = (
+            models.UserOTTSubscription.query
+            .filter_by(user_id=current_user.id, ended_at=None)
+            .join(models.OTTProvider)
+            .order_by(models.OTTProvider.id)
+            .all()
+        )
+        all_ott_providers = models.OTTProvider.query.filter_by(is_active=True).order_by(models.OTTProvider.id).all()
+        my_ott_provider_ids = {sub.provider_id for sub in my_ott_subscriptions}
+        return {
+            "wishlist_counts": wishlist_counts,
+            "my_ott_subscriptions": my_ott_subscriptions,
+            "all_ott_providers": all_ott_providers,
+            "my_ott_provider_ids": my_ott_provider_ids,
+            "ott_icons": OTT_ICONS,
+            "default_ott_icon": DEFAULT_OTT_ICON,
+        }
 
     @app.before_request
     def enforce_onboarding():

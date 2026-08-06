@@ -1,8 +1,46 @@
 {% extends "base.html" %}
 
 {% block title %}{{ '검색 결과' if query else '인기 영화' }} | 영화 콘텐츠{% endblock %}
+{% block main_class %} catalog-container{% endblock %}
 
 {% block content %}
+  {% if current_user.is_authenticated %}
+    <section
+      id="recommendation-section"
+      class="recommendation-section"
+      data-get-url="{{ url_for('recommendations.get_recommendations') }}"
+      data-post-url="{{ url_for('recommendations.generate_recommendations') }}"
+      aria-labelledby="recommendation-title"
+    >
+      <div class="recommendation-heading">
+        <div>
+          <p class="recommendation-eyebrow">AI PERSONALIZED PICKS</p>
+          <h1 id="recommendation-title">{{ current_user.nickname }}님을 위한 추천</h1>
+          <p>선호 장르와 찜·시청·별점 활동을 바탕으로 골랐어요.</p>
+        </div>
+        <button id="recommendation-refresh" class="recommendation-refresh" type="button">
+          다시 추천받기
+        </button>
+      </div>
+
+      <div id="recommendation-loading" class="recommendation-status" role="status">
+        <span class="recommendation-spinner" aria-hidden="true"></span>
+        취향에 맞는 영화를 고르고 있어요.
+      </div>
+      <div id="recommendation-error" class="recommendation-status recommendation-error" role="alert" hidden>
+        <strong>추천을 불러오지 못했어요.</strong>
+        <span>잠시 후 다시 시도해 주세요.</span>
+      </div>
+      <div id="recommendation-empty" class="recommendation-status" hidden>
+        아직 추천 결과가 없어요.
+      </div>
+      <div id="recommendation-grid" class="recommendation-grid" hidden></div>
+      <p id="recommendation-meta" class="recommendation-meta" hidden></p>
+      <p class="recommendation-attribution">OTT 제공 정보: JustWatch via TMDB</p>
+      <noscript><p class="recommendation-status">AI 추천을 보려면 JavaScript를 활성화해 주세요.</p></noscript>
+    </section>
+  {% endif %}
+
   <section class="content-heading">
     <div>
       <h1>{{ '검색 결과' if query else '인기 영화' }}</h1>
@@ -79,5 +117,11 @@
       <p>다른 제목으로 검색해 보세요.</p>
       <a href="{{ url_for('pages.index') }}">인기 영화 보기</a>
     </section>
+  {% endif %}
+{% endblock %}
+
+{% block scripts %}
+  {% if current_user.is_authenticated %}
+    <script src="{{ url_for('static', filename='js/recommendations.js') }}" defer></script>
   {% endif %}
 {% endblock %}
