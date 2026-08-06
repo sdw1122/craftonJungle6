@@ -59,13 +59,13 @@
                   <polyline points="9 18 15 12 9 6"></polyline>
                 </svg>
               </a>
-              <a class="dropdown-item" href="#">
+              <a class="dropdown-item" href="{{ url_for('wishlist.library', status='wishlisted') }}">
                 <span>찜했어요</span><span class="dropdown-count">{{ wishlist_counts.wishlisted }}</span>
               </a>
-              <a class="dropdown-item" href="#">
+              <a class="dropdown-item" href="{{ url_for('wishlist.library', status='watching') }}">
                 <span>보는중</span><span class="dropdown-count">{{ wishlist_counts.watching }}</span>
               </a>
-              <a class="dropdown-item" href="#">
+              <a class="dropdown-item" href="{{ url_for('wishlist.library', status='watched') }}">
                 <span>봤어요</span><span class="dropdown-count">{{ wishlist_counts.watched }}</span>
               </a>
               <div class="dropdown-divider"></div>

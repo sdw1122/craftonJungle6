@@ -101,13 +101,28 @@ class UserOTTSubscription(db.Model):
     provider = db.relationship("OTTProvider")
 
 
+class Movie(db.Model):
+    __tablename__ = "movies"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, server_default=db.text("gen_random_uuid()"))
+    tmdb_id = db.Column(db.BigInteger, unique=True)
+    original_title = db.Column(db.String(300), nullable=False)
+    overview = db.Column(db.Text)
+    release_date = db.Column(db.Date)
+    runtime_minutes = db.Column(db.SmallInteger)
+    original_language = db.Column(db.String(10))
+    age_rating = db.Column(db.String(20))
+    poster_url = db.Column(db.Text)
+    created_at = db.Column(db.DateTime(timezone=True), server_default=db.text("CURRENT_TIMESTAMP"))
+    updated_at = db.Column(db.DateTime(timezone=True), server_default=db.text("CURRENT_TIMESTAMP"))
+
+
 class UserMovieLibrary(db.Model):
     __tablename__ = "user_movie_library"
 
     WATCH_STATUSES = ("WATCHING", "WATCHED")
 
     user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
-    # movies 테이블은 C 담당 — 이 파일에서는 Movie 모델을 정의하지 않고 FK 컬럼만 참조
     movie_id = db.Column(UUID(as_uuid=True), db.ForeignKey("movies.id", ondelete="CASCADE"), primary_key=True)
     is_wishlisted = db.Column(db.Boolean, nullable=False, default=False)
     watch_status = db.Column(db.String(20))
@@ -129,6 +144,8 @@ class MovieReview(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), server_default=db.text("CURRENT_TIMESTAMP"))
     updated_at = db.Column(db.DateTime(timezone=True), server_default=db.text("CURRENT_TIMESTAMP"))
     deleted_at = db.Column(db.DateTime(timezone=True))
+
+    user = db.relationship("User")
 
     @property
     def rating(self) -> float:
