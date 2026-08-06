@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}{{ movie.title or movie.original_title }} | 영화 콘텐츠{% endblock %}
+
+{% block content %}
+  <a class="back-link" href="{{ url_for('pages.index') }}">← 영화 목록</a>
+
+  <article class="movie-detail">
+    <div class="detail-poster-wrap">
+      {% if movie.poster_url %}
+        <img
+          class="detail-poster"
+          src="{{ movie.poster_url }}"
+          alt="{{ movie.title or movie.original_title }} 포스터"
+        >
+      {% else %}
+        <div class="poster-placeholder detail-placeholder">포스터 없음</div>
+      {% endif %}
+    </div>
+
+    <div class="detail-content">
+      <h1>{{ movie.title or movie.original_title or '제목 없음' }}</h1>
+      {% if movie.original_title and movie.original_title != movie.title %}
+        <p class="original-title">{{ movie.original_title }}</p>
+      {% endif %}
+
+      <dl class="movie-facts">
+        <div>
+          <dt>개봉일</dt>
+          <dd>{{ movie.release_date or '미정' }}</dd>
+        </div>
+        <div>
+          <dt>상영 시간</dt>
+          <dd>{{ movie.runtime_minutes ~ '분' if movie.runtime_minutes else '정보 없음' }}</dd>
+        </div>
+        <div>
+          <dt>장르</dt>
+          <dd>
+            {% if movie.genres %}
+              {{ movie.genres | map(attribute='name') | join(', ') }}
+            {% else %}
+              정보 없음
+            {% endif %}
+          </dd>
+        </div>
+        <div>
+          <dt>감독</dt>
+          <dd>
+            {% if movie.directors %}
+              {{ movie.directors | map(attribute='name') | join(', ') }}
+            {% else %}
+              정보 없음
+            {% endif %}
+          </dd>
+        </div>
+      </dl>
+
+      <section class="detail-section">
+        <h2>줄거리</h2>
+        <p>{{ movie.overview or '등록된 줄거리가 없습니다.' }}</p>
+      </section>
+
+      <section class="detail-section action-section" aria-labelledby="movie-actions-title">
+        <h2 id="movie-actions-title">내 영화 상태</h2>
+        <p class="helper-text">저장 기능은 준비 중입니다.</p>
+        <div class="action-buttons">
+          <button type="button" disabled>찜</button>
+          <button type="button" disabled>보는 중</button>
+          <button type="button" disabled>봤어요</button>
+        </div>
+        <div class="rating-buttons" aria-label="별점 선택 준비 중">
+          {% for score in range(1, 6) %}
+            <button type="button" disabled aria-label="{{ score }}점">{{ score }}점</button>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+  </article>
+
+  <section class="detail-section full-width-section">
+    <h2>출연진</h2>
+    {% if movie.cast %}
+      <ul class="cast-list">
+        {% for person in movie.cast %}
+          <li>
+            <strong>{{ person.name }}</strong>
+            {% if person.character_name %}
+              <span>{{ person.character_name }}</span>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>등록된 출연진 정보가 없습니다.</p>
+    {% endif %}
+  </section>
+
+  <section class="detail-section full-width-section">
+    <h2>한국 OTT 제공 정보</h2>
+    {% if movie.watch_providers %}
+      <div class="provider-groups">
+        {% for offer_type, providers in movie.watch_providers | groupby('offer_type') %}
+          <div>
+            <h3>{{ offer_type }}</h3>
+            <ul>
+              {% for provider in providers %}
+                <li>{{ provider.name }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endfor %}
+      </div>
+      {% if movie.watch_provider_link %}
+        <p class="source-link">
+          <a href="{{ movie.watch_provider_link }}" target="_blank" rel="noopener noreferrer">TMDB에서 제공처 확인</a>
+          · OTT 정보 제공: JustWatch
+        </p>
+      {% endif %}
+    {% else %}
+      <p>현재 확인되는 한국 OTT 제공 정보가 없습니다.</p>
+    {% endif %}
+  </section>
+{% endblock %}

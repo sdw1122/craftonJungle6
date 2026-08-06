@@ -1,16 +1,16 @@
 # app/routes/search.py
-from flask import Blueprint, request, jsonify, render_template
+from flask import Blueprint, jsonify, render_template, request
 from sqlalchemy import text
-from app.extensions import db  # 팀원이 만든 공통 db 객체 불러오기
+from ..extensions import db  # 팀원이 만든 공통 db 객체 불러오기
 
 # 블루프린트 생성
-search_bp = Blueprint('search', __name__, url_prefix='/api')
+search_bp = Blueprint('search', __name__)
 
-@search_bp.route('/search', methods=['GET'])
+@search_bp.get('/search')
 def search_page():
     return render_template('search.html')
 
-@search_bp.route('/api/search', methods=['GET'])
+@search_bp.get('/api/search')
 def search_movies():
     query_param = request.args.get('query', '').strip()
     if not query_param:

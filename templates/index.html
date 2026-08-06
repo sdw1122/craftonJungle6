@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}{{ '검색 결과' if query else '인기 영화' }} | 영화 콘텐츠{% endblock %}
+
+{% block content %}
+  <section class="content-heading">
+    <div>
+      <h1>{{ '검색 결과' if query else '인기 영화' }}</h1>
+      {% if query and not error_message %}
+        <p>“{{ query }}” 검색 결과 {{ total_results }}개</p>
+      {% else %}
+        <p>현재 TMDB에서 인기 있는 영화를 확인하세요.</p>
+      {% endif %}
+    </div>
+
+    <form class="search-form" method="get" action="{{ url_for('pages.index') }}">
+      <label for="movie-query">영화 제목 검색</label>
+      <div class="search-row">
+        <input
+          id="movie-query"
+          name="query"
+          type="search"
+          value="{{ query }}"
+          placeholder="영화 제목을 입력하세요"
+        >
+        <button type="submit">검색</button>
+      </div>
+    </form>
+  </section>
+
+  {% if error_message %}
+    <section class="message-box error-message" role="alert">
+      <h2>콘텐츠를 불러오지 못했습니다.</h2>
+      <p>{{ error_message }}</p>
+      <a href="{{ url_for('pages.index') }}">인기 영화로 돌아가기</a>
+    </section>
+  {% elif movies %}
+    <section class="movie-grid" aria-label="영화 목록">
+      {% for movie in movies %}
+        <article class="movie-card">
+          <a href="{{ url_for('pages.movie_detail', tmdb_id=movie.tmdb_id) }}">
+            {% if movie.poster_url %}
+              <img
+                class="movie-poster"
+                src="{{ movie.poster_url }}"
+                alt="{{ movie.title or movie.original_title }} 포스터"
+                loading="lazy"
+              >
+            {% else %}
+              <div class="poster-placeholder">포스터 없음</div>
+            {% endif %}
+            <div class="movie-card-body">
+              <h2>{{ movie.title or movie.original_title or '제목 없음' }}</h2>
+              <p>{{ movie.release_date[:4] if movie.release_date else '개봉일 미정' }}</p>
+            </div>
+          </a>
+        </article>
+      {% endfor %}
+    </section>
+
+    <nav class="pagination" aria-label="영화 목록 페이지">
+      {% if page > 1 %}
+        <a href="{{ url_for('pages.index', query=query, page=page - 1) if query else url_for('pages.index', page=page - 1) }}">이전</a>
+      {% else %}
+        <span aria-disabled="true">이전</span>
+      {% endif %}
+
+      <strong>{{ page }} / {{ total_pages or 1 }}</strong>
+
+      {% if page < total_pages %}
+        <a href="{{ url_for('pages.index', query=query, page=page + 1) if query else url_for('pages.index', page=page + 1) }}">다음</a>
+      {% else %}
+        <span aria-disabled="true">다음</span>
+      {% endif %}
+    </nav>
+  {% else %}
+    <section class="message-box">
+      <h2>검색 결과가 없습니다.</h2>
+      <p>다른 제목으로 검색해 보세요.</p>
+      <a href="{{ url_for('pages.index') }}">인기 영화 보기</a>
+    </section>
+  {% endif %}
+{% endblock %}

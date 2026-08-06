@@ -9,12 +9,12 @@
   <body>
     <header class="site-header">
       <div class="site-header-left">
-        <a class="logo" href="{{ url_for('main.index') }}">
+        <a class="logo" href="{{ url_for('pages.index') }}">
           <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Junglelights" class="logo-img">
         </a>
 
         <nav class="nav-links">
-          <a href="{{ url_for('main.index') }}" class="nav-link{{ ' active' if request.endpoint == 'main.index' else '' }}">홈</a>
+          <a href="{{ url_for('pages.index') }}" class="nav-link{{ ' active' if request.endpoint == 'pages.index' else '' }}">홈</a>
           <a href="#" class="nav-link">랭킹</a>
         </nav>
       </div>

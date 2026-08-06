@@ -33,7 +33,7 @@ def signup():
         db.session.commit()
 
         login_user(user)
-        return redirect(url_for("main.index"))
+        return redirect(url_for("pages.index"))
 
     return render_template("auth/signup.html")
 
@@ -53,7 +53,7 @@ def login():
         db.session.commit()
 
         login_user(account.user)
-        return redirect(url_for("main.index"))
+        return redirect(url_for("pages.index"))
 
     return render_template("auth/login.html")
 
@@ -62,7 +62,7 @@ def login():
 @login_required
 def logout():
     logout_user()
-    return redirect(url_for("main.index"))
+    return redirect(url_for("pages.index"))
 
 
 @auth_bp.route("/auth/google/login")
@@ -87,7 +87,7 @@ def google_callback():
         account.last_login_at = datetime.utcnow()
         db.session.commit()
         login_user(account.user)
-        return redirect(url_for("main.index"))
+        return redirect(url_for("pages.index"))
 
     user = User.query.filter_by(email=email).first()
     if user is None:
@@ -108,4 +108,4 @@ def google_callback():
     db.session.commit()
 
     login_user(user)
-    return redirect(url_for("main.index"))
+    return redirect(url_for("pages.index"))

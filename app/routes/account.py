@@ -26,4 +26,4 @@ def update_ott_subscriptions():
             db.session.add(UserOTTSubscription(user_id=current_user.id, provider_id=provider_id))
 
     db.session.commit()
-    return redirect(request.referrer or url_for("main.index"))
+    return redirect(request.referrer or url_for("pages.index"))
