@@ -5,6 +5,7 @@ from flask_login import current_user
 from sqlalchemy import URL
 
 from .extensions import db, login_manager, oauth
+from .ott_icons import DEFAULT_OTT_ICON, OTT_ICONS
 
 
 def create_app() -> Flask:
@@ -43,6 +44,7 @@ def create_app() -> Flask:
     def load_user(user_id):
         return db.session.get(models.User, user_id)
 
+    from .routes.account import account_bp
     from .routes.auth import auth_bp
     from .routes.main import main_bp
     from .routes.onboarding import onboarding_bp
@@ -52,8 +54,43 @@ def create_app() -> Flask:
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(onboarding_bp)
+    app.register_blueprint(account_bp)
     app.register_blueprint(wishlist_bp)
     app.register_blueprint(reviews_bp)
+
+    @app.context_processor
+    def inject_header_data():
+        if not current_user.is_authenticated:
+            return {}
+
+        wishlist_counts = {
+            "wishlisted": models.UserMovieLibrary.query.filter_by(
+                user_id=current_user.id, is_wishlisted=True
+            ).count(),
+            "watching": models.UserMovieLibrary.query.filter_by(
+                user_id=current_user.id, watch_status="WATCHING"
+            ).count(),
+            "watched": models.UserMovieLibrary.query.filter_by(
+                user_id=current_user.id, watch_status="WATCHED"
+            ).count(),
+        }
+        my_ott_subscriptions = (
+            models.UserOTTSubscription.query
+            .filter_by(user_id=current_user.id, ended_at=None)
+            .join(models.OTTProvider)
+            .order_by(models.OTTProvider.id)
+            .all()
+        )
+        all_ott_providers = models.OTTProvider.query.filter_by(is_active=True).order_by(models.OTTProvider.id).all()
+        my_ott_provider_ids = {sub.provider_id for sub in my_ott_subscriptions}
+        return {
+            "wishlist_counts": wishlist_counts,
+            "my_ott_subscriptions": my_ott_subscriptions,
+            "all_ott_providers": all_ott_providers,
+            "my_ott_provider_ids": my_ott_provider_ids,
+            "ott_icons": OTT_ICONS,
+            "default_ott_icon": DEFAULT_OTT_ICON,
+        }
 
     @app.before_request
     def enforce_onboarding():
