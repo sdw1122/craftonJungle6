@@ -6,10 +6,25 @@
 
     <div class="library-tabs">
       {% for value, label in tabs.items() %}
-        <a href="{{ url_for('wishlist.library', status=value) }}"
+        <a href="{{ url_for('wishlist.library', status=value, ott=ott_filter) }}"
           class="library-tab{{ ' active' if status == value else '' }}">{{ label }}</a>
       {% endfor %}
     </div>
+
+    {% if my_subscriptions %}
+      <div class="library-ott-tabs">
+        <a href="{{ url_for('wishlist.library', status=status, ott='all') }}"
+          class="library-ott-tab{{ ' active' if ott_filter == 'all' else '' }}">전체</a>
+        {% for sub in my_subscriptions %}
+          {% set icon = ott_icons.get(sub.provider.code, default_ott_icon) %}
+          <a href="{{ url_for('wishlist.library', status=status, ott=sub.provider_id) }}"
+            class="library-ott-tab{{ ' active' if ott_filter == sub.provider_id|string else '' }}">
+            <span class="library-ott-tab-icon" style="background: {{ icon.color }}">{{ icon.text }}</span>
+            {{ sub.provider.name }}
+          </a>
+        {% endfor %}
+      </div>
+    {% endif %}
 
     <p class="library-count">{{ items|length }}편</p>
 
