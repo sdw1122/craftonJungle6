@@ -4,7 +4,8 @@
 
 이 문서는 다음 기능을 제공하는 영화 추천 서비스의 PostgreSQL 데이터베이스 설계를 정의한다.
 
-- Google OAuth 기반 회원가입 및 로그인
+- 아이디·비밀번호 회원가입 및 로그인
+- Google OAuth 소셜 로그인
 - 영화 찜하기, 보는 중, 봤어요 상태 관리
 - 사용자가 구독하는 OTT별 랭킹 및 추천
 - 구독 OTT별 종료 예정작 및 공개 예정작 추천
@@ -26,6 +27,7 @@
 
 ```mermaid
 erDiagram
+    USERS ||--o{ AUTH_ACCOUNTS : authenticates
     USERS ||--o{ USER_SESSIONS : owns
     USERS ||--o{ USER_OTT_SUBSCRIPTIONS : subscribes
     OTT_PROVIDERS ||--o{ USER_OTT_SUBSCRIPTIONS : selected
@@ -57,7 +59,7 @@ erDiagram
 
 ---
 
-## 3. 회원 및 Google 인증
+## 3. 회원 및 인증
 
 ### 3.1 `users`
 
@@ -66,19 +68,46 @@ erDiagram
 | 컬럼 | 타입 | 제약조건 | 설명 |
 |---|---|---|---|
 | `id` | UUID | PK | 회원 ID |
-| `google_sub` | VARCHAR(255) | UNIQUE, NOT NULL | Google이 발급한 변경 불가능한 사용자 ID |
-| `email` | CITEXT | UNIQUE, NOT NULL | Google 계정 이메일 |
+| `email` | CITEXT | UNIQUE, NULL | 이메일 |
 | `nickname` | VARCHAR(50) | UNIQUE, NOT NULL | 닉네임 |
 | `status` | VARCHAR(20) | NOT NULL | `ACTIVE`, `BLOCKED`, `WITHDRAWN` |
 | `email_verified_at` | TIMESTAMPTZ | NULL | 이메일 인증 시점 |
-| `last_login_at` | TIMESTAMPTZ | NULL | 마지막 Google 로그인 시점 |
+| `last_login_at` | TIMESTAMPTZ | NULL | 마지막 로그인 시점 |
 | `created_at` | TIMESTAMPTZ | NOT NULL | 가입 시점 |
 | `updated_at` | TIMESTAMPTZ | NOT NULL | 수정 시점 |
 | `deleted_at` | TIMESTAMPTZ | NULL | 탈퇴 시점 |
 
-Google 로그인 성공 후 ID 토큰의 서명, 발급자, 대상 서비스, 만료 시간을 검증하고 `sub` 값을 `google_sub`에 저장한다. 이메일은 변경될 수 있으므로 로그인 계정의 고유 식별자로 사용하지 않는다. Google 액세스 토큰과 비밀번호는 DB에 저장하지 않는다.
+`users`에는 인증 방식과 무관한 회원 정보를 저장한다. 한 회원이 일반 로그인과 Google 로그인을 연결할 수 있도록 실제 인증 정보는 `auth_accounts`로 분리한다.
 
-### 3.2 `user_sessions`
+### 3.2 `auth_accounts`
+
+일반 아이디 로그인과 Google 로그인을 저장한다. 허용되는 인증 방식은 `LOCAL`, `GOOGLE`뿐이다.
+
+| 컬럼 | 타입 | 제약조건 | 설명 |
+|---|---|---|---|
+| `id` | UUID | PK | 인증 계정 ID |
+| `user_id` | UUID | FK, NOT NULL | 회원 ID |
+| `provider` | VARCHAR(20) | NOT NULL | `LOCAL` 또는 `GOOGLE` |
+| `login_id` | CITEXT | NULL | 일반 로그인 아이디 |
+| `google_sub` | VARCHAR(255) | NULL | Google이 발급한 변경 불가능한 사용자 ID |
+| `password_hash` | TEXT | NULL | 일반 로그인 비밀번호 해시 |
+| `password_changed_at` | TIMESTAMPTZ | NULL | 비밀번호 변경 시점 |
+| `last_login_at` | TIMESTAMPTZ | NULL | 이 인증 방식의 마지막 로그인 시점 |
+| `created_at` | TIMESTAMPTZ | NOT NULL | 생성 시점 |
+| `updated_at` | TIMESTAMPTZ | NOT NULL | 수정 시점 |
+
+적용되는 규칙은 다음과 같다.
+
+- `LOCAL`: `login_id`, `password_hash` 필수, `google_sub` 사용 금지
+- `GOOGLE`: `google_sub` 필수, `login_id`, `password_hash` 사용 금지
+- 한 회원은 인증 방식별로 계정을 하나씩만 연결 가능
+- 일반 로그인 아이디는 대소문자를 구분하지 않고 전체 회원에서 유일해야 함
+- Google `sub`는 전체 회원에서 유일해야 함
+- 비밀번호 원문은 저장하지 않고 Argon2id 또는 bcrypt 결과만 저장
+- Google ID 토큰의 서명, 발급자, 대상 서비스, 만료 시간을 서버에서 검증한 후 `sub` 저장
+- Google 외의 소셜 로그인 제공자는 허용하지 않음
+
+### 3.3 `user_sessions`
 
 로그인 유지와 강제 로그아웃을 처리한다.
 
@@ -453,7 +482,8 @@ ON ranking_snapshots
 
 | 기능 | 중심 테이블 |
 |---|---|
-| Google 회원가입 및 로그인 | `users`, `user_sessions` |
+| 아이디·비밀번호 회원가입 및 로그인 | `users`, `auth_accounts`, `user_sessions` |
+| Google 소셜 로그인 | `users`, `auth_accounts`, `user_sessions` |
 | 구독 OTT 선택 | `ott_providers`, `user_ott_subscriptions` |
 | 찜하기, 보는 중, 봤어요 | `user_movie_library` |
 | OTT별 랭킹 | `ranking_snapshots`, `ranking_items` |
@@ -470,17 +500,19 @@ ON ranking_snapshots
 
 ## 13. 핵심 비즈니스 규칙
 
-1. 회원 계정은 검증된 Google `sub` 값을 기준으로 식별한다.
-2. 한 회원은 같은 영화를 한 번만 평가하며 기존 평가를 수정한다.
-3. 찜 여부와 시청 상태는 독립적으로 관리한다.
-4. 한 회원은 같은 OTT에 활성 구독을 두 개 이상 가질 수 없다.
-5. OTT 공개 상태는 저장하지 않고 공개 시작일과 종료일을 기준으로 계산한다.
-6. OTT별 랭킹은 날짜별 스냅샷으로 저장한다.
-7. 구독 OTT 추천에서는 `offer_type = 'SUBSCRIPTION'`인 영화만 기본 대상으로 한다.
-8. AI 추천 결과를 그대로 영구 노출하지 않고 `expires_at` 이후 다시 생성한다.
-9. 영화, 인물 및 OTT 데이터는 외부 API 수집 시 외부 ID를 기준으로 중복 생성을 방지한다.
-10. 영화 이미지는 `movies.poster_url` 하나만 저장한다.
-11. 사용자 탈퇴 시 개인정보는 삭제하거나 비식별화하고 관련 보존 정책을 별도로 정의한다.
+1. 인증 방식은 일반 아이디·비밀번호와 Google 로그인만 허용한다.
+2. 일반 로그인 비밀번호는 안전한 단방향 해시로만 저장한다.
+3. Google 계정은 검증된 `sub` 값을 기준으로 식별한다.
+4. 한 회원은 같은 영화를 한 번만 평가하며 기존 평가를 수정한다.
+5. 찜 여부와 시청 상태는 독립적으로 관리한다.
+6. 한 회원은 같은 OTT에 활성 구독을 두 개 이상 가질 수 없다.
+7. OTT 공개 상태는 저장하지 않고 공개 시작일과 종료일을 기준으로 계산한다.
+8. OTT별 랭킹은 날짜별 스냅샷으로 저장한다.
+9. 구독 OTT 추천에서는 `offer_type = 'SUBSCRIPTION'`인 영화만 기본 대상으로 한다.
+10. AI 추천 결과를 그대로 영구 노출하지 않고 `expires_at` 이후 다시 생성한다.
+11. 영화, 인물 및 OTT 데이터는 외부 API 수집 시 외부 ID를 기준으로 중복 생성을 방지한다.
+12. 영화 이미지는 `movies.poster_url` 하나만 저장한다.
+13. 사용자 탈퇴 시 개인정보는 삭제하거나 비식별화하고 관련 보존 정책을 별도로 정의한다.
 
 ---
 
@@ -488,7 +520,7 @@ ON ranking_snapshots
 
 ### 1단계: 핵심 기능
 
-- `users`, `user_sessions`
+- `users`, `auth_accounts`, `user_sessions`
 - `movies`, `movie_titles`, `genres`, `movie_genres`
 - `people`, `person_names`, `movie_credits`
 - `ott_providers`, `ott_availabilities`

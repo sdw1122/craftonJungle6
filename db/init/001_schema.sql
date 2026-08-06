@@ -6,8 +6,7 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    google_sub VARCHAR(255) NOT NULL UNIQUE,
-    email CITEXT NOT NULL UNIQUE,
+    email CITEXT UNIQUE,
     nickname VARCHAR(50) NOT NULL UNIQUE,
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'
         CHECK (status IN ('ACTIVE', 'BLOCKED', 'WITHDRAWN')),
@@ -16,6 +15,36 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS auth_accounts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider VARCHAR(20) NOT NULL
+        CHECK (provider IN ('LOCAL', 'GOOGLE')),
+    login_id CITEXT,
+    google_sub VARCHAR(255),
+    password_hash TEXT,
+    password_changed_at TIMESTAMPTZ,
+    last_login_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id, provider),
+    CHECK (
+        (
+            provider = 'LOCAL'
+            AND login_id IS NOT NULL
+            AND password_hash IS NOT NULL
+            AND google_sub IS NULL
+        )
+        OR
+        (
+            provider = 'GOOGLE'
+            AND google_sub IS NOT NULL
+            AND login_id IS NULL
+            AND password_hash IS NULL
+        )
+    )
 );
 
 CREATE TABLE IF NOT EXISTS user_sessions (
@@ -203,6 +232,17 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_active_user_ott
     ON user_ott_subscriptions (user_id, provider_id)
     WHERE ended_at IS NULL;
 
+CREATE UNIQUE INDEX IF NOT EXISTS uq_auth_local_login_id
+    ON auth_accounts (login_id)
+    WHERE provider = 'LOCAL';
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_auth_google_sub
+    ON auth_accounts (google_sub)
+    WHERE provider = 'GOOGLE';
+
+CREATE INDEX IF NOT EXISTS idx_auth_accounts_user
+    ON auth_accounts (user_id);
+
 CREATE INDEX IF NOT EXISTS idx_user_sessions_active
     ON user_sessions (user_id, expires_at)
     WHERE revoked_at IS NULL;
@@ -255,6 +295,11 @@ $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS trg_users_updated_at ON users;
 CREATE TRIGGER trg_users_updated_at
 BEFORE UPDATE ON users
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+DROP TRIGGER IF EXISTS trg_auth_accounts_updated_at ON auth_accounts;
+CREATE TRIGGER trg_auth_accounts_updated_at
+BEFORE UPDATE ON auth_accounts
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 DROP TRIGGER IF EXISTS trg_movies_updated_at ON movies;
