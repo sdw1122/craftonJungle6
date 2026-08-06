@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Flask Docker Starter</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  </head>
+  <body>
+    <main class="container">
+      <section class="card">
+        <p class="eyebrow">DOCKER DEVELOPMENT ENVIRONMENT</p>
+        <h1>Flask + PostgreSQL</h1>
+        <p class="description">
+          기본 HTML/CSS 화면과 PostgreSQL 연결이 준비되었습니다.
+        </p>
+
+        <div class="status" aria-live="polite">
+          <span class="status-dot {{ 'connected' if database_ready else 'disconnected' }}"></span>
+          <span>
+            데이터베이스
+            <strong>{{ '연결됨' if database_ready else '연결 안 됨' }}</strong>
+          </span>
+        </div>
+
+        <a class="button" href="{{ url_for('health') }}">상태 API 확인</a>
+      </section>
+    </main>
+  </body>
+</html>
