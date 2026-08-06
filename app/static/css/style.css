@@ -1,0 +1,402 @@
+:root {
+  color-scheme: light;
+  font-family: Inter, Pretendard, "Noto Sans KR", system-ui, sans-serif;
+  color: #18212f;
+  background: #edf2f7;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+}
+
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 32px;
+  background: #ffffff;
+  border-bottom: 1px solid #dbe4ee;
+}
+
+.site-header .logo {
+  font-weight: 800;
+  font-size: 20px;
+  color: #18212f;
+  text-decoration: none;
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.nav-actions a {
+  color: #18212f;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.nav-actions .nickname {
+  color: #5d6b7b;
+  font-weight: 600;
+}
+
+.flashes {
+  list-style: none;
+  margin: 16px auto 0;
+  padding: 0;
+  max-width: 620px;
+}
+
+.flashes li {
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: #fde8e8;
+  color: #9b2c2c;
+  font-weight: 600;
+}
+
+.container {
+  min-height: calc(100vh - 65px);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.card {
+  width: min(100%, 620px);
+  padding: 48px;
+  border: 1px solid #dbe4ee;
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgb(30 55 80 / 12%);
+}
+
+.auth-card {
+  text-align: left;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.auth-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 600;
+  color: #33475b;
+}
+
+.auth-form input {
+  padding: 12px 14px;
+  border: 1px solid #dbe4ee;
+  border-radius: 10px;
+  font-size: 15px;
+}
+
+.auth-switch {
+  margin-top: 20px;
+  color: #5d6b7b;
+}
+
+.auth-switch a {
+  color: #18212f;
+  font-weight: 700;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: #52708f;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(28px, 6vw, 48px);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+}
+
+.description {
+  margin: 20px 0 32px;
+  color: #5d6b7b;
+  font-size: 18px;
+  line-height: 1.7;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: #f6f8fb;
+}
+
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+}
+
+.status-dot.connected {
+  background: #16a36a;
+  box-shadow: 0 0 0 5px rgb(22 163 106 / 14%);
+}
+
+.status-dot.disconnected {
+  background: #dc3f4f;
+  box-shadow: 0 0 0 5px rgb(220 63 79 / 14%);
+}
+
+.button {
+  display: inline-block;
+  margin-top: 28px;
+  padding: 13px 18px;
+  border-radius: 12px;
+  color: #ffffff;
+  background: #18212f;
+  font-weight: 700;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.button:hover {
+  background: #2b3a4e;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+  color: #9aa9ba;
+  font-size: 13px;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #dbe4ee;
+}
+
+.button-google {
+  display: block;
+  width: 100%;
+  text-align: center;
+  background: #ffffff;
+  color: #18212f;
+  border: 1px solid #dbe4ee;
+  margin-top: 0;
+}
+
+.button-google:hover {
+  background: #f6f8fb;
+}
+
+.button-secondary {
+  background: #ffffff;
+  color: #18212f;
+  border: 1px solid #dbe4ee;
+}
+
+.button-secondary:hover {
+  background: #f6f8fb;
+}
+
+.field-error {
+  margin: 12px 0 0;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: #fde8e8;
+  color: #9b2c2c;
+  font-weight: 600;
+}
+
+.onboarding-card {
+  text-align: left;
+}
+
+.progress-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.progress-bar span {
+  display: block;
+  height: 100%;
+  background: #4361ee;
+  border-radius: 999px;
+}
+
+.onboarding-form {
+  margin-top: 24px;
+}
+
+.onboarding-nav {
+  display: flex;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.onboarding-nav .button {
+  margin-top: 0;
+  flex: 1;
+  text-align: center;
+}
+
+.option-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.option-button {
+  padding: 18px;
+  border-radius: 12px;
+  border: 1px solid #dbe4ee;
+  background: #ffffff;
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.option-button:hover {
+  border-color: #4361ee;
+  color: #4361ee;
+}
+
+.date-select-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+.date-select-row select {
+  padding: 12px 14px;
+  border: 1px solid #dbe4ee;
+  border-radius: 10px;
+  font-size: 15px;
+  background: #ffffff;
+}
+
+.genre-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.genre-tile {
+  position: relative;
+  padding: 18px 8px;
+  border: 1px solid #dbe4ee;
+  border-radius: 12px;
+  background: #ffffff;
+  cursor: pointer;
+  text-align: center;
+  font-weight: 600;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.genre-tile.selected {
+  border-color: #4361ee;
+  background: #eef1ff;
+  color: #4361ee;
+}
+
+.genre-priority-badge {
+  display: none;
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #4361ee;
+  color: #ffffff;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.genre-tile.selected .genre-priority-badge {
+  display: block;
+}
+
+.ott-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 12px;
+}
+
+.ott-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 8px;
+  border: 1px solid #dbe4ee;
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: center;
+  font-weight: 600;
+}
+
+.ott-item:has(input:checked) {
+  border-color: #4361ee;
+  background: #eef1ff;
+}
+
+.ott-item input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ott-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.ott-name {
+  font-size: 13px;
+}
+
+@media (max-width: 520px) {
+  .card {
+    padding: 32px 24px;
+  }
+
+  .site-header {
+    padding: 16px;
+  }
+}

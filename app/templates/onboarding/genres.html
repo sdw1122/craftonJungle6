@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}선호 장르 - 키노라이츠{% endblock %}
+{% block content %}
+  <section class="card onboarding-card">
+    <div class="progress-bar"><span style="width: 75%"></span></div>
+    <h1>선호하는 장르를 알려주세요</h1>
+    <p class="description">최대 3개까지, 선택한 순서대로 우선순위가 매겨져요.</p>
+
+    {% if error %}<p class="field-error">{{ error }}</p>{% endif %}
+
+    <form method="post" id="genre-form" class="onboarding-form">
+      <div class="genre-grid">
+        {% for g in genre_list %}
+          <button type="button" class="genre-tile" data-genre-id="{{ g.id }}">
+            <span class="genre-priority-badge"></span>
+            <span class="genre-name">{{ g.name }}</span>
+          </button>
+        {% endfor %}
+      </div>
+
+      <input type="hidden" name="priority_1" id="priority_1">
+      <input type="hidden" name="priority_2" id="priority_2">
+      <input type="hidden" name="priority_3" id="priority_3">
+
+      <div class="onboarding-nav">
+        <a class="button button-secondary" href="{{ url_for('onboarding.birthdate') }}">이전</a>
+        <button type="submit" class="button">다음</button>
+      </div>
+    </form>
+  </section>
+
+  <script>
+    (function () {
+      var selected = [];
+      var tiles = document.querySelectorAll(".genre-tile");
+
+      function render() {
+        tiles.forEach(function (tile) {
+          var id = tile.dataset.genreId;
+          var index = selected.indexOf(id);
+          var badge = tile.querySelector(".genre-priority-badge");
+          if (index === -1) {
+            tile.classList.remove("selected");
+            badge.textContent = "";
+          } else {
+            tile.classList.add("selected");
+            badge.textContent = index + 1;
+          }
+        });
+        for (var i = 0; i < 3; i++) {
+          document.getElementById("priority_" + (i + 1)).value = selected[i] || "";
+        }
+      }
+
+      tiles.forEach(function (tile) {
+        tile.addEventListener("click", function () {
+          var id = tile.dataset.genreId;
+          var index = selected.indexOf(id);
+          if (index !== -1) {
+            selected.splice(index, 1);
+          } else if (selected.length < 3) {
+            selected.push(id);
+          }
+          render();
+        });
+      });
+    })();
+  </script>
+{% endblock %}
