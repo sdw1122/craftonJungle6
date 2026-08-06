@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}영화 검색 - 키노라이츠{% endblock %}
+
+{% block content %}
+<section class="card">
+  <p class="eyebrow">MOVIE SEARCH</p>
+  <h1>영화 검색</h1>
+  <p class="description">찾으시는 영화의 제목을 입력해 보세요.</p>
+
+  <!-- 🔍 검색창 입력 폼 -->
+  <div class="search-box" style="margin: 20px 0; display: flex; gap: 10px; justify-content: center;">
+    <input 
+      type="text" 
+      id="searchInput" 
+      placeholder="영화 제목을 입력하세요 (예: 인터스텔라)" 
+      style="padding: 12px; width: 70%; border: 1px solid #ccc; border-radius: 6px; font-size: 16px;"
+    >
+    <button 
+      onclick="handleSearch()" 
+      class="button" 
+      style="cursor: pointer; padding: 12px 20px;"
+    >
+      검색
+    </button>
+  </div>
+</section>
+
+<!-- 🎬 검색 결과 표시 영역 -->
+<section style="margin-top: 30px;">
+  <div id="movieGrid" class="movie-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px;">
+    <!-- 검색 결과 카드들이 여기에 동적으로 삽입됩니다 -->
+  </div>
+</section>
+
+<!-- 💡 검색 로직 JavaScript -->
+<script>
+  // 엔터키 입력 시 검색 실행
+  document.getElementById('searchInput').addEventListener('keypress', function (e) {
+    if (e.key === 'Enter') handleSearch();
+  });
+
+  async function handleSearch() {
+    const query = document.getElementById('searchInput').value.trim();
+    const grid = document.getElementById('movieGrid');
+
+    if (!query) {
+      alert('검색어를 입력해 주세요!');
+      return;
+    }
+
+    grid.innerHTML = '<p style="text-align: center; grid-column: 1/-1;">검색 중...</p>';
+
+    try {
+      // search.py 라우터의 /api/search 엔드포인트 호출
+      const response = await fetch(`/api/search?query=${encodeURIComponent(query)}`);
+      const result = await response.json();
+
+      if (result.status === 'success') {
+        renderMovies(result.data);
+      } else {
+        grid.innerHTML = `<p style="text-align: center; grid-column: 1/-1;">${result.message}</p>`;
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      grid.innerHTML = '<p style="text-align: center; grid-column: 1/-1;">서버 통신 중 오류가 발생했습니다.</p>';
+    }
+  }
+
+  function renderMovies(movies) {
+    const grid = document.getElementById('movieGrid');
+    grid.innerHTML = ''; // 기존 결과 초기화
+
+    if (movies.length === 0) {
+      grid.innerHTML = '<p style="text-align: center; grid-column: 1/-1;">검색 결과가 없습니다.</p>';
+      return;
+    }
+
+    movies.forEach(movie => {
+      const card = document.createElement('div');
+      card.style.cssText = 'border: 1px solid #eee; border-radius: 8px; padding: 10px; text-align: center; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);';
+      
+      const posterSrc = movie.poster_url || 'https://via.placeholder.com/160x230?text=No+Image';
+      
+      card.innerHTML = `
+        <img src="${posterSrc}" alt="${movie.title}" style="width: 100%; height: 220px; object-fit: cover; border-radius: 4px;">
+        <h4 style="margin: 10px 0 5px 0; font-size: 15px; word-break: keep-all;">${movie.title}</h4>
+      `;
+      grid.appendChild(card);
+    });
+  }
+</script>
+{% endblock %}

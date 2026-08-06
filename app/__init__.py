@@ -51,12 +51,16 @@ def create_app() -> Flask:
     from .routes.reviews import reviews_bp
     from .routes.wishlist import wishlist_bp
 
+    # search 라우터 임포트
+    from app.routes.search import search_bp
+
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(onboarding_bp)
     app.register_blueprint(account_bp)
     app.register_blueprint(wishlist_bp)
     app.register_blueprint(reviews_bp)
+    app.register_blueprint(search_bp)
 
     @app.context_processor
     def inject_header_data():
