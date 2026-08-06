@@ -32,7 +32,7 @@ DEFAULT_OTT_ICON = {"text": "?", "color": "#8899aa"}
 @login_required
 def intro():
     if not current_user.needs_onboarding:
-        return redirect(url_for("main.index"))
+        return redirect(url_for("pages.index"))
     return render_template("onboarding/intro.html")
 
 

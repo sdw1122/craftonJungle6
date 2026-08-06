@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}영화 콘텐츠{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="site-title" href="{{ url_for('pages.index') }}">영화 콘텐츠</a>
+    </header>
+
+    <main class="page-container">
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+      This product uses the TMDB API but is not endorsed or certified by TMDB.
+    </footer>
+  </body>
+</html>

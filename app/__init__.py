@@ -1,13 +1,16 @@
 import os
+from pathlib import Path
+from typing import Any
 
 from flask import Flask, redirect, request, url_for
 from flask_login import current_user
+from jinja2 import ChoiceLoader, FileSystemLoader, PrefixLoader
 from sqlalchemy import URL
 
 from .extensions import db, login_manager, oauth
 
 
-def create_app() -> Flask:
+def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     app = Flask(__name__)
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-change-me")
     app.config["SQLALCHEMY_DATABASE_URI"] = URL.create(
@@ -21,6 +24,9 @@ def create_app() -> Flask:
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["GOOGLE_CLIENT_ID"] = os.getenv("GOOGLE_CLIENT_ID")
     app.config["GOOGLE_CLIENT_SECRET"] = os.getenv("GOOGLE_CLIENT_SECRET")
+
+    if test_config:
+        app.config.update(test_config)
 
     # 스키마는 db/init/*.sql이 기준(source of truth)입니다.
     # Flask-Migrate/db.create_all()은 사용하지 않습니다 — 여기서는 기존 테이블에 매핑만 합니다.
@@ -44,16 +50,32 @@ def create_app() -> Flask:
         return db.session.get(models.User, user_id)
 
     from .routes.auth import auth_bp
+    from .routes.api import api_blueprint
     from .routes.main import main_bp
     from .routes.onboarding import onboarding_bp
+    from .routes.pages import pages_blueprint
     from .routes.reviews import reviews_bp
+    from .routes.search import search_bp
     from .routes.wishlist import wishlist_bp
+    from .services.tmdb import TMDBClient
 
+    project_root = Path(__file__).resolve().parent.parent
+    app.jinja_loader = ChoiceLoader([
+        app.jinja_loader,
+        PrefixLoader({
+            "movies": FileSystemLoader(str(project_root / "templates")),
+        }),
+    ])
+    app.extensions["tmdb_client"] = TMDBClient(os.getenv("TMDB_ACCESS_TOKEN"))
+
+    app.register_blueprint(pages_blueprint)
+    app.register_blueprint(api_blueprint)
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(onboarding_bp)
     app.register_blueprint(wishlist_bp)
     app.register_blueprint(reviews_bp)
+    app.register_blueprint(search_bp)
 
     @app.before_request
     def enforce_onboarding():
