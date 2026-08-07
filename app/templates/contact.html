@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}문의하기 - 키노라이츠{% endblock %}
+
+{% block content %}
+<section class="card" style="margin-top: 50px;">
+    <h1>문의하기</h1>
+    <p class="description">서비스 이용 중 불편한 점이나 궁금한 점이 있다면 언제든 남겨주세요.</p>
+    
+    <form style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">
+        <label for="subject">제목</label>
+        <input type="text" id="subject" name="subject" placeholder="문의 제목을 입력해주세요" style="padding: 10px;">
+        
+        <label for="message">문의 내용</label>
+        <textarea id="message" name="message" rows="5" placeholder="상세한 내용을 적어주세요" style="padding: 10px;"></textarea>
+        
+        <button type="button" class="button" style="padding: 12px; margin-top: 10px;">보내기</button>
+    </form>
+</section>
+{% endblock %}

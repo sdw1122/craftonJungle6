@@ -221,3 +221,13 @@ def movie_detail(tmdb_id: int):
         my_review=my_review,
         reviews=reviews,
     )
+
+
+@pages_blueprint.get("/contact")
+def contact():
+   
+    return render_template("contact.html")
+
+@pages_blueprint.get("/settings")
+def settings():
+    return render_template("settings.html")
