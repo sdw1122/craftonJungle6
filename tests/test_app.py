@@ -1,24 +1,13 @@
 import unittest
+from unittest.mock import patch
 
 from app import create_app
-
-
-class FakeTMDBClient:
-    is_configured = True
-
-    def search_movies(self, query, page=1):
-        return {
-            "page": page,
-            "total_pages": 1,
-            "total_results": 1,
-            "results": [{"id": 1, "title": query}],
-        }
+from app.services.movie_catalog_query import MoviePage
 
 
 class AppTests(unittest.TestCase):
     def setUp(self):
         self.app = create_app({"TESTING": True})
-        self.app.extensions["tmdb_client"] = FakeTMDBClient()
         self.client = self.app.test_client()
 
     def test_public_pages_render(self):
@@ -32,11 +21,19 @@ class AppTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json(), {"status": "success", "data": []})
 
-    def test_tmdb_api_uses_the_registered_client(self):
-        response = self.client.get("/api/tmdb/movies/search?query=기생충&page=1")
+    def test_movie_api_uses_the_database_catalog(self):
+        page = MoviePage(
+            movies=[{"tmdb_id": 1, "title": "기생충"}],
+            page=1,
+            total_pages=1,
+            total_results=1,
+        )
+        with patch("app.routes.api.list_catalog_movies", return_value=page) as catalog:
+            response = self.client.get("/api/movies/search?query=기생충&page=1")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json()["movies"][0]["title"], "기생충")
+        catalog.assert_called_once_with(page=1, query="기생충")
 
     def test_route_rules_are_not_duplicated(self):
         rules = [

@@ -91,6 +91,8 @@ CREATE TABLE IF NOT EXISTS movies (
     original_language VARCHAR(10),
     age_rating VARCHAR(20),
     poster_url TEXT,
+    backdrop_url TEXT,
+    popular_rank SMALLINT CHECK (popular_rank IS NULL OR popular_rank > 0),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -275,6 +277,10 @@ CREATE INDEX IF NOT EXISTS idx_movie_credits_movie_type
 
 CREATE INDEX IF NOT EXISTS idx_movie_genres_genre
     ON movie_genres (genre_id, movie_id);
+
+CREATE INDEX IF NOT EXISTS idx_movies_popular_rank
+    ON movies (popular_rank)
+    WHERE popular_rank IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_user_favorite_genres_genre
     ON user_favorite_genres (genre_id, user_id);

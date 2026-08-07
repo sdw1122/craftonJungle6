@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import Any
 
 import requests
-from flask import current_app
 
 
 @dataclass
@@ -74,6 +73,47 @@ class TMDBClient:
             page=page,
         )
 
+    def search_by_person(self, query: str, page: int = 1) -> dict:
+        """
+        배우나 감독 이름으로 검색하여 해당 인물이 참여한 영화 목록을 반환
+        """
+        
+        # 파라미터(**params) 형태로 query와 language를 깔끔하게 전달
+        person_search_data = self._get(
+            "/search/person", 
+            query=query, 
+            language="ko-KR", 
+            page=1
+        )
+        
+        # 검색된 인물이 없으면 빈 결과 반환
+        if not person_search_data.get("results"):
+            return {"results": [], "page": 1, "total_pages": 0, "total_results": 0}
+
+        # 2. 가장 정확도가 높은 첫 번째 인물의 고유 ID 추출
+        person_id = person_search_data["results"][0]["id"]
+
+        # 3. 해당 인물의 영화 참여 목록 가져오기
+        credits_data = self._get(
+            f"/person/{person_id}/movie_credits", 
+            language="ko-KR"
+        )
+
+        # 4. 배우로 출연한 영화와 감독/스태프로 참여한 영화 합치기
+        all_movies = credits_data.get("cast", []) + credits_data.get("crew", [])
+
+        # 5. 중복 영화 제거 및 인기도 순으로 정렬
+        unique_movies = {movie["id"]: movie for movie in all_movies}.values()
+        sorted_movies = sorted(unique_movies, key=lambda x: x.get("popularity", 0), reverse=True)
+
+        # 6. 기존 검색 결과와 동일한 형태로 반환
+        return {
+            "results": list(sorted_movies),
+            "page": 1,
+            "total_pages": 1,
+            "total_results": len(sorted_movies)
+        }
+    
     def get_popular_movies(self, page: int = 1) -> dict[str, Any]:
         return self._get(
             "/movie/popular",
@@ -131,21 +171,6 @@ class TMDBClient:
         return f"{cls.IMAGE_BASE_URL}/{size}{path}"
 
 
-def get_tmdb_client() -> TMDBClient:
-    return current_app.extensions["tmdb_client"]
-
-
-def normalize_search_movie(movie: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "tmdb_id": movie["id"],
-        "title": movie.get("title"),
-        "original_title": movie.get("original_title"),
-        "overview": movie.get("overview"),
-        "release_date": movie.get("release_date") or None,
-        "poster_url": TMDBClient.image_url(movie.get("poster_path")),
-    }
-
-
 def normalize_movie_detail(
     movie: dict[str, Any],
     provider_response: dict[str, Any],
@@ -186,6 +211,7 @@ def normalize_movie_detail(
         "runtime_minutes": movie.get("runtime"),
         "original_language": movie.get("original_language"),
         "poster_url": TMDBClient.image_url(movie.get("poster_path")),
+        "backdrop_url": TMDBClient.image_url(movie.get("backdrop_path"), "w1280"),
         "genres": [
             {"tmdb_id": genre.get("id"), "name": genre.get("name")}
             for genre in movie.get("genres") or []
@@ -206,3 +232,5 @@ def normalize_movie_detail(
         "watch_providers": watch_providers,
         "watch_provider_link": kr_providers.get("link"),
     }
+
+
