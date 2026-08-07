@@ -1047,7 +1047,7 @@ h1 {
 }
 
 .library-page {
-  max-width: 1080px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 48px 32px 80px;
   color: #ffffff;
@@ -1151,6 +1151,7 @@ h1 {
   display: flex;
   align-items: center;
   gap: 20px;
+  height: 135px;
 }
 
 .library-row-poster-link {
@@ -1187,6 +1188,9 @@ h1 {
   font-size: 18px;
   color: #ffffff;
   margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .library-row-meta {
