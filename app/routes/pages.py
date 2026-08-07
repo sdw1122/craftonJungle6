@@ -178,6 +178,9 @@ def movie_detail(tmdb_id: int):
         .all()
     )
 
+    review_count = len(reviews)
+    avg_rating = round(sum(r.rating for r in reviews) / review_count, 1) if review_count else None
+
     library_status = None
     my_review = None
     if current_user.is_authenticated:
@@ -203,6 +206,10 @@ def movie_detail(tmdb_id: int):
         library_status=library_status,
         my_review=my_review,
         reviews=reviews,
+        avg_rating=avg_rating,
+        review_count=review_count,
+        ott_icons=OTT_ICONS,
+        default_ott_icon=DEFAULT_OTT_ICON,
     )
 
 
