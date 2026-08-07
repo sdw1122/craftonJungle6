@@ -1047,14 +1047,15 @@ h1 {
 }
 
 .library-page {
-  max-width: 1400px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   padding: 48px 32px 80px;
   color: #ffffff;
 }
 
 .library-page h1 {
-  margin: 0 0 24px;
+  margin: 0 0 18px;
+  font-size: clamp(40px, 4vw, 25px);
   color: #ffffff;
 }
 
@@ -1066,13 +1067,13 @@ h1 {
 }
 
 .library-tab {
-  padding: 10px 20px;
+  padding: 8px 15px;
   border-radius: 999px;
   border: 1px solid #333333;
   text-decoration: none;
   color: #e5e8ec;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .library-tab.active {
@@ -1091,14 +1092,14 @@ h1 {
 .library-ott-tab {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px 8px 8px;
+  gap: 6px;
+  padding: 6px 12px 6px 6px;
   border-radius: 999px;
   border: 1px solid #333333;
   text-decoration: none;
   color: #9aa4b2;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .library-ott-tab.active {
@@ -1108,15 +1109,15 @@ h1 {
 }
 
 .library-ott-tab-icon {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   border-radius: 999px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #ffffff;
   font-weight: 800;
-  font-size: 10px;
+  font-size: 9px;
 }
 
 .library-list-header {
@@ -1148,21 +1149,22 @@ h1 {
 }
 
 .library-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 80px 1fr 23px;
   align-items: center;
-  gap: 20px;
-  height: 135px;
+  gap: 18px;
+  height: 130px;
 }
 
 .library-row-poster-link {
-  flex-shrink: 0;
+  display: block;
 }
 
 .library-row-poster {
-  width: 90px;
+  width: 80px;
   aspect-ratio: 2 / 3;
   object-fit: cover;
-  border-radius: 10px;
+  border-radius: 7px;
   background: #1c1c1c;
   display: block;
 }
@@ -1185,17 +1187,17 @@ h1 {
 
 .library-row-info strong {
   display: block;
-  font-size: 18px;
+  font-size: 15px;
   color: #ffffff;
-  margin-bottom: 6px;
+  margin-bottom: 3px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .library-row-meta {
-  color: #9aa4b2;
-  font-size: 14px;
+  color: #54585e;
+  font-size: 15px;
 }
 
 .library-row-remove-form {
@@ -1203,13 +1205,13 @@ h1 {
 }
 
 .library-row-remove {
-  width: 40px;
-  height: 40px;
+  width: 23px;
+  height: 23px;
   border-radius: 999px;
   border: none;
   background: #2a2a2a;
   color: #ffffff;
-  font-size: 22px;
+  font-size: 13px;
   line-height: 1;
   cursor: pointer;
 }

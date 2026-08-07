@@ -9,3 +9,17 @@ OTT_ICONS = {
     "APPLE_TV_PLUS": {"text": "TV", "color": "#000000"},
 }
 DEFAULT_OTT_ICON = {"text": "?", "color": "#8899aa"}
+
+# TMDB watch-provider 이름(provider_name) -> 우리 ott_providers.code 매칭
+# TMDB가 실제로 내려주는 표기와 다를 수 있어, 확인되는 대로 보정 필요
+TMDB_PROVIDER_NAME_TO_CODE = {
+    "Netflix": "NETFLIX",
+    "Wavve": "WAVVE",
+    "TVING": "TVING",
+    "Tving": "TVING",
+    "Disney Plus": "DISNEY_PLUS",
+    "Coupang Play": "COUPANG_PLAY",
+    "Watcha": "WATCHA",
+    "Apple TV Plus": "APPLE_TV_PLUS",
+    "Apple TV": "APPLE_TV_PLUS",
+}
