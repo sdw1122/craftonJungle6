@@ -101,6 +101,24 @@ class UserOTTSubscription(db.Model):
     provider = db.relationship("OTTProvider")
 
 
+class OTTAvailability(db.Model):
+    __tablename__ = "ott_availabilities"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, server_default=db.text("gen_random_uuid()"))
+    movie_id = db.Column(UUID(as_uuid=True), db.ForeignKey("movies.id", ondelete="CASCADE"), nullable=False)
+    provider_id = db.Column(db.SmallInteger, db.ForeignKey("ott_providers.id", ondelete="RESTRICT"), nullable=False)
+    region_code = db.Column(db.String(2), nullable=False, default="KR")
+    offer_type = db.Column(db.String(20), nullable=False)
+    available_from = db.Column(db.Date, nullable=False)
+    available_until = db.Column(db.Date)
+    content_url = db.Column(db.Text)
+    source = db.Column(db.String(50))
+    source_updated_at = db.Column(db.DateTime(timezone=True))
+    last_checked_at = db.Column(db.DateTime(timezone=True), server_default=db.text("CURRENT_TIMESTAMP"))
+
+    provider = db.relationship("OTTProvider")
+
+
 class Movie(db.Model):
     __tablename__ = "movies"
 

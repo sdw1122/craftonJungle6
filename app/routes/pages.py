@@ -1,7 +1,8 @@
 from flask import Blueprint, render_template, request
 from flask_login import current_user
 
-from ..models import Movie, MovieReview, UserMovieLibrary
+from ..models import MovieReview, UserMovieLibrary
+from ..movie_sync import get_or_create_movie, sync_ott_availability
 from ..services.tmdb import (
     TMDBError,
     get_tmdb_client,
@@ -74,40 +75,47 @@ def movie_detail(tmdb_id: int):
             message=exc.message,
         ), exc.status_code
 
+    normalized = normalize_movie_detail(movie, providers)
+
+    local_movie = get_or_create_movie(
+        tmdb_id=tmdb_id,
+        title=normalized.get("title"),
+        overview=normalized.get("overview"),
+        release_date=normalized.get("release_date"),
+        poster_url=normalized.get("poster_url"),
+    )
+    sync_ott_availability(local_movie, normalized.get("watch_providers") or [])
+
+    reviews = (
+        MovieReview.query
+        .filter_by(movie_id=local_movie.id)
+        .filter(MovieReview.deleted_at.is_(None))
+        .order_by(MovieReview.created_at.desc())
+        .all()
+    )
+
     library_status = None
     my_review = None
-    reviews = []
-
-    local_movie = Movie.query.filter_by(tmdb_id=tmdb_id).first()
-    if local_movie is not None:
-        reviews = (
-            MovieReview.query
-            .filter_by(movie_id=local_movie.id)
-            .filter(MovieReview.deleted_at.is_(None))
-            .order_by(MovieReview.created_at.desc())
-            .all()
-        )
-
-        if current_user.is_authenticated:
-            entry = UserMovieLibrary.query.filter_by(
-                user_id=current_user.id, movie_id=local_movie.id
-            ).first()
-            if entry is not None:
-                library_status = {
-                    "is_wishlisted": entry.is_wishlisted,
-                    "watch_status": entry.watch_status,
-                }
-            review = next((r for r in reviews if r.user_id == current_user.id), None)
-            if review is not None:
-                my_review = {
-                    "rating": review.rating,
-                    "content": review.content,
-                    "contains_spoiler": review.contains_spoiler,
-                }
+    if current_user.is_authenticated:
+        entry = UserMovieLibrary.query.filter_by(
+            user_id=current_user.id, movie_id=local_movie.id
+        ).first()
+        if entry is not None:
+            library_status = {
+                "is_wishlisted": entry.is_wishlisted,
+                "watch_status": entry.watch_status,
+            }
+        review = next((r for r in reviews if r.user_id == current_user.id), None)
+        if review is not None:
+            my_review = {
+                "rating": review.rating,
+                "content": review.content,
+                "contains_spoiler": review.contains_spoiler,
+            }
 
     return render_template(
         "movies/movie_detail.html",
-        movie=normalize_movie_detail(movie, providers),
+        movie=normalized,
         library_status=library_status,
         my_review=my_review,
         reviews=reviews,
