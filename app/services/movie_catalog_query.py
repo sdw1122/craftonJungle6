@@ -316,7 +316,9 @@ def get_catalog_movie_record(tmdb_id: int) -> MovieDetailRecord | None:
     watch_providers = [
         {
             "name": item.provider.name,
+            "code": item.provider.code,
             "offer_type": item.offer_type,
+            "content_url": item.content_url,
         }
         for item in availability
     ]

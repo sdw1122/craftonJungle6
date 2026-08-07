@@ -1,87 +1,123 @@
 {% extends "base.html" %}
 
 {% block title %}{{ movie.title or movie.original_title }} | 영화 콘텐츠{% endblock %}
+{% block body_class %}dark-page{% endblock %}
 
 {% block content %}
-  <a class="back-link" href="{{ url_for('pages.index') }}">← 영화 목록</a>
+{% set offer_type_labels = {'SUBSCRIPTION': '정액제', 'FREE': '무료', 'RENT': '대여', 'BUY': '구매'} %}
+{% set offer_type_order = ['SUBSCRIPTION', 'FREE', 'RENT', 'BUY'] %}
+{% set default_offer_type_ns = namespace(value=none) %}
+{% for offer_type in offer_type_order %}
+  {% if default_offer_type_ns.value is none and (movie.watch_providers | selectattr('offer_type', 'equalto', offer_type) | list) %}
+    {% set default_offer_type_ns.value = offer_type %}
+  {% endif %}
+{% endfor %}
+{% set hero_image = movie.backdrop_url or movie.poster_url %}
+<section class="detail-hero"{% if hero_image %} style="--hero-image: url('{{ hero_image }}');"{% endif %}>
+  <div class="detail-hero-overlay"></div>
+  <div class="detail-hero-blur"></div>
+  <div class="detail-hero-inner">
+    <h1>{{ movie.title or movie.original_title or '제목 없음' }}</h1>
 
-  <article class="movie-detail">
-    <div class="detail-poster-wrap">
-      {% if movie.poster_url %}
-        <img
-          class="detail-poster"
-          src="{{ movie.poster_url }}"
-          alt="{{ movie.title or movie.original_title }} 포스터"
-        >
+    <div class="detail-rating-line">
+      {% if avg_rating %}
+        <span class="detail-rating-score">★ {{ avg_rating }}</span>
+        <span class="detail-rating-count">({{ review_count }}건 리뷰)</span>
       {% else %}
-        <div class="poster-placeholder detail-placeholder">포스터 없음</div>
+        <span class="detail-rating-empty">아직 등록된 평가가 없어요</span>
       {% endif %}
     </div>
 
-    <div class="detail-content">
-      <h1>{{ movie.title or movie.original_title or '제목 없음' }}</h1>
-      {% if movie.original_title and movie.original_title != movie.title %}
-        <p class="original-title">{{ movie.original_title }}</p>
+    <div class="detail-overview-wrap">
+      <p class="detail-overview" id="detail-overview">{{ movie.overview or '등록된 줄거리가 없습니다.' }}</p>
+      {% if movie.overview and movie.overview|length > 110 %}
+        <button type="button" class="overview-toggle" data-overview-toggle aria-controls="detail-overview">더보기</button>
       {% endif %}
+    </div>
 
-      <dl class="movie-facts">
-        <div>
-          <dt>개봉일</dt>
-          <dd>{{ movie.release_date or '미정' }}</dd>
-        </div>
-        <div>
-          <dt>상영 시간</dt>
-          <dd>{{ movie.runtime_minutes ~ '분' if movie.runtime_minutes else '정보 없음' }}</dd>
-        </div>
-        <div>
-          <dt>장르</dt>
-          <dd>
-            {% if movie.genres %}
-              {{ movie.genres | map(attribute='name') | join(', ') }}
-            {% else %}
-              정보 없음
+    <div class="detail-tags">
+      <span class="detail-tag">{{ movie.release_date or '미정' }}</span>
+      {% if movie.runtime_minutes %}
+        <span class="detail-tag">{{ movie.runtime_minutes }}분</span>
+      {% endif %}
+      {% for genre in movie.genres %}
+        <span class="detail-tag">{{ genre.name }}</span>
+      {% endfor %}
+      {% if movie.directors %}
+        <span class="detail-tag">감독 · {{ movie.directors | map(attribute='name') | join(', ') }}</span>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<div class="movie-detail-page">
+
+  {% set movie_fields %}
+    <input type="hidden" name="title" value="{{ movie.title or movie.original_title or '' }}">
+    <input type="hidden" name="overview" value="{{ movie.overview or '' }}">
+    <input type="hidden" name="release_date" value="{{ movie.release_date or '' }}">
+    <input type="hidden" name="poster_url" value="{{ movie.poster_url or '' }}">
+  {% endset %}
+
+  <div class="detail-body">
+    <aside class="detail-ott-panel" aria-labelledby="ott-panel-title">
+      <h2 id="ott-panel-title">바로보기</h2>
+      {% if movie.watch_providers %}
+        <div class="ott-panel-tabs" role="tablist" aria-label="제공 방식 선택">
+          {% for offer_type in offer_type_order %}
+            {% set group = movie.watch_providers | selectattr('offer_type', 'equalto', offer_type) | list %}
+            {% if group %}
+              <button
+                type="button"
+                id="ott-tab-{{ offer_type }}"
+                class="ott-panel-tab{{ ' active' if offer_type == default_offer_type_ns.value else '' }}"
+                role="tab"
+                data-ott-tab="{{ offer_type }}"
+              >{{ offer_type_labels[offer_type] }} <span class="ott-panel-tab-count">{{ group|length }}</span></button>
             {% endif %}
-          </dd>
+          {% endfor %}
         </div>
-        <div>
-          <dt>감독</dt>
-          <dd>
-            {% if movie.directors %}
-              {{ movie.directors | map(attribute='name') | join(', ') }}
-            {% else %}
-              정보 없음
+
+        <div class="ott-panel-groups">
+          {% for offer_type in offer_type_order %}
+            {% set group = movie.watch_providers | selectattr('offer_type', 'equalto', offer_type) | list %}
+            {% if group %}
+              <div class="ott-panel-group" data-ott-panel="{{ offer_type }}"{{ ' hidden' if offer_type != default_offer_type_ns.value else '' }}>
+                {% for provider in group %}
+                  {% set icon = ott_icons.get(provider.code, default_ott_icon) %}
+                  <div class="ott-panel-row">
+                    <span class="ott-panel-icon" style="background: {{ icon.color }}">{{ icon.text }}</span>
+                    <span class="ott-panel-name">{{ provider.name }}</span>
+                    {% if provider.content_url %}
+                      <a class="ott-panel-link" href="{{ provider.content_url }}" target="_blank" rel="noopener noreferrer">바로 보기</a>
+                    {% else %}
+                      <span class="ott-panel-link ott-panel-link-disabled">바로 보기</span>
+                    {% endif %}
+                  </div>
+                {% endfor %}
+              </div>
             {% endif %}
-          </dd>
+          {% endfor %}
         </div>
-      </dl>
+      {% else %}
+        <p class="helper-text">현재 확인되는 한국 OTT 제공 정보가 없습니다.</p>
+      {% endif %}
+    </aside>
 
-      <section class="detail-section">
-        <h2>줄거리</h2>
-        <p>{{ movie.overview or '등록된 줄거리가 없습니다.' }}</p>
-      </section>
-
-      {% set movie_fields %}
-        <input type="hidden" name="title" value="{{ movie.title or movie.original_title or '' }}">
-        <input type="hidden" name="overview" value="{{ movie.overview or '' }}">
-        <input type="hidden" name="release_date" value="{{ movie.release_date or '' }}">
-        <input type="hidden" name="poster_url" value="{{ movie.poster_url or '' }}">
-      {% endset %}
-
+    <div class="detail-main">
       <section class="detail-section action-section" aria-labelledby="movie-actions-title">
-        <h2 id="movie-actions-title">내 영화 상태</h2>
-
         {% if current_user.is_authenticated %}
           <div class="action-buttons">
             <form method="post" action="{{ url_for('wishlist.upsert', tmdb_id=movie.tmdb_id) }}" class="inline-form">
               {{ movie_fields | safe }}
               <input type="hidden" name="is_wishlisted" value="{{ 'false' if library_status and library_status.is_wishlisted else 'true' }}">
-              <button type="submit" class="{{ 'active' if library_status and library_status.is_wishlisted else '' }}">찜</button>
+              <button type="submit" class="{{ 'active' if library_status and library_status.is_wishlisted else '' }}">찜하기</button>
             </form>
 
             <form method="post" action="{{ url_for('wishlist.upsert', tmdb_id=movie.tmdb_id) }}" class="inline-form">
               {{ movie_fields | safe }}
               <input type="hidden" name="watch_status" value="{{ '' if library_status and library_status.watch_status == 'WATCHING' else 'WATCHING' }}">
-              <button type="submit" class="{{ 'active' if library_status and library_status.watch_status == 'WATCHING' else '' }}">보는 중</button>
+              <button type="submit" class="{{ 'active' if library_status and library_status.watch_status == 'WATCHING' else '' }}">보는중</button>
             </form>
 
             <form method="post" action="{{ url_for('wishlist.upsert', tmdb_id=movie.tmdb_id) }}" class="inline-form">
@@ -89,14 +125,48 @@
               <input type="hidden" name="watch_status" value="{{ '' if library_status and library_status.watch_status == 'WATCHED' else 'WATCHED' }}">
               <button type="submit" class="{{ 'active' if library_status and library_status.watch_status == 'WATCHED' else '' }}">봤어요</button>
             </form>
-          </div>
 
+            <button type="button" class="share-button" data-share-button>공유하기</button>
+          </div>
         {% else %}
           <p class="helper-text">로그인하면 찜, 시청 상태, 별점을 기록할 수 있어요.</p>
           <div class="action-buttons">
-            <button type="button" disabled>찜</button>
-            <button type="button" disabled>보는 중</button>
+            <button type="button" disabled>찜하기</button>
+            <button type="button" disabled>보는중</button>
             <button type="button" disabled>봤어요</button>
+            <button type="button" class="share-button" data-share-button>공유하기</button>
+          </div>
+        {% endif %}
+      </section>
+
+      <section class="detail-section quick-reaction-section" aria-labelledby="quick-reaction-title">
+        <h2 id="quick-reaction-title" class="sr-only">빠른 평가</h2>
+        {% if current_user.is_authenticated %}
+          <div class="quick-reaction-buttons">
+            <form method="post" action="{{ url_for('reviews.upsert', tmdb_id=movie.tmdb_id) }}" class="inline-form">
+              {{ movie_fields | safe }}
+              <input type="hidden" name="content" value="{{ my_review.content if my_review else '' }}">
+              <input type="hidden" name="contains_spoiler" value="{{ 'true' if my_review and my_review.contains_spoiler else 'false' }}">
+              <input type="hidden" name="rating" value="1">
+              <button type="submit" class="quick-reaction-button quick-reaction-dislike{{ ' active' if my_review and my_review.rating <= 2 else '' }}">
+                <span aria-hidden="true">☹</span> 별로예요
+              </button>
+            </form>
+            <form method="post" action="{{ url_for('reviews.upsert', tmdb_id=movie.tmdb_id) }}" class="inline-form">
+              {{ movie_fields | safe }}
+              <input type="hidden" name="content" value="{{ my_review.content if my_review else '' }}">
+              <input type="hidden" name="contains_spoiler" value="{{ 'true' if my_review and my_review.contains_spoiler else 'false' }}">
+              <input type="hidden" name="rating" value="5">
+              <button type="submit" class="quick-reaction-button quick-reaction-like{{ ' active' if my_review and my_review.rating >= 4 else '' }}">
+                <span aria-hidden="true">☺</span> 좋아요
+              </button>
+            </form>
+          </div>
+          <p class="helper-text quick-reaction-hint">빠른 평가는 아래 별점에 반영돼요. 세부 별점과 리뷰는 아래에서 남길 수 있어요.</p>
+        {% else %}
+          <div class="quick-reaction-buttons">
+            <button type="button" class="quick-reaction-button quick-reaction-dislike" disabled><span aria-hidden="true">☹</span> 별로예요</button>
+            <button type="button" class="quick-reaction-button quick-reaction-like" disabled><span aria-hidden="true">☺</span> 좋아요</button>
           </div>
         {% endif %}
       </section>
@@ -169,50 +239,96 @@
           <p class="helper-text">아직 등록된 리뷰가 없어요. 첫 리뷰를 남겨보세요!</p>
         {% endif %}
       </section>
-    </div>
-  </article>
 
-  <section class="detail-section full-width-section">
-    <h2>출연진</h2>
-    {% if movie.cast %}
-      <ul class="cast-list">
-        {% for person in movie.cast %}
-          <li>
-            <strong>{{ person.name }}</strong>
-            {% if person.character_name %}
-              <span>{{ person.character_name }}</span>
-            {% endif %}
-          </li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p>등록된 출연진 정보가 없습니다.</p>
-    {% endif %}
-  </section>
-
-  <section class="detail-section full-width-section">
-    <h2>한국 OTT 제공 정보</h2>
-    {% if movie.watch_providers %}
-      <div class="provider-groups">
-        {% for offer_type, providers in movie.watch_providers | groupby('offer_type') %}
-          <div>
-            <h3>{{ offer_type }}</h3>
-            <ul>
-              {% for provider in providers %}
-                <li>{{ provider.name }}</li>
-              {% endfor %}
-            </ul>
+      <section class="detail-section cast-section" aria-labelledby="cast-title">
+        <h2 id="cast-title">출연진/제작진</h2>
+        {% if movie.directors or movie.cast %}
+          {% set ns = namespace(has_hidden=false) %}
+          <div class="cast-grid" data-cast-grid>
+            {% for director in movie.directors %}
+              <div class="cast-card">
+                <span class="cast-avatar" aria-hidden="true">{{ director.name[:1] }}</span>
+                <span class="cast-name">{{ director.name }}</span>
+                <span class="cast-role">감독</span>
+              </div>
+            {% endfor %}
+            {% for person in movie.cast %}
+              {% set is_lead = person.billing_order is not none and person.billing_order < 3 %}
+              {% if not is_lead %}{% set ns.has_hidden = true %}{% endif %}
+              <div class="cast-card{{ '' if is_lead else ' cast-card-extra' }}"{{ '' if is_lead else ' hidden' }}>
+                <span class="cast-avatar" aria-hidden="true">{{ person.name[:1] }}</span>
+                <span class="cast-name">{{ person.name }}</span>
+                <span class="cast-role">{{ '주연' if is_lead else '출연' }}{% if person.character_name %} · {{ person.character_name }}{% endif %}</span>
+              </div>
+            {% endfor %}
           </div>
-        {% endfor %}
-      </div>
-      {% if movie.watch_provider_link %}
-        <p class="source-link">
-          <a href="{{ movie.watch_provider_link }}" target="_blank" rel="noopener noreferrer">TMDB에서 제공처 확인</a>
-          · OTT 정보 제공: JustWatch
-        </p>
-      {% endif %}
-    {% else %}
-      <p>현재 확인되는 한국 OTT 제공 정보가 없습니다.</p>
-    {% endif %}
-  </section>
+          {% if ns.has_hidden %}
+            <button type="button" class="cast-more-button" data-cast-more>더보기</button>
+          {% endif %}
+        {% else %}
+          <p class="helper-text">등록된 출연진 정보가 없습니다.</p>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    (function () {
+      var ottTabs = Array.from(document.querySelectorAll("[data-ott-tab]"));
+      var ottPanels = Array.from(document.querySelectorAll("[data-ott-panel]"));
+
+      function activateOttTab(tab) {
+        var key = tab.dataset.ottTab;
+        ottTabs.forEach(function (item) {
+          item.classList.toggle("active", item === tab);
+        });
+        ottPanels.forEach(function (panel) {
+          panel.hidden = panel.dataset.ottPanel !== key;
+        });
+      }
+
+      ottTabs.forEach(function (tab, index) {
+        tab.addEventListener("click", function () { activateOttTab(tab); });
+        if (index === 0) activateOttTab(tab);
+      });
+
+      var overviewToggle = document.querySelector("[data-overview-toggle]");
+      var overview = document.getElementById("detail-overview");
+      if (overviewToggle && overview) {
+        overview.classList.add("is-collapsed");
+        overviewToggle.addEventListener("click", function () {
+          var collapsed = overview.classList.toggle("is-collapsed");
+          overviewToggle.textContent = collapsed ? "더보기" : "접기";
+        });
+      }
+
+      var castMoreButton = document.querySelector("[data-cast-more]");
+      if (castMoreButton) {
+        castMoreButton.addEventListener("click", function () {
+          document.querySelectorAll(".cast-card-extra[hidden]").forEach(function (card) {
+            card.hidden = false;
+          });
+          castMoreButton.hidden = true;
+        });
+      }
+
+      var shareButton = document.querySelector("[data-share-button]");
+      if (shareButton) {
+        shareButton.addEventListener("click", function () {
+          var url = window.location.href;
+          if (navigator.share) {
+            navigator.share({ title: document.title, url: url }).catch(function () {});
+          } else if (navigator.clipboard) {
+            navigator.clipboard.writeText(url).then(function () {
+              shareButton.textContent = "링크 복사됨";
+              setTimeout(function () { shareButton.textContent = "공유하기"; }, 1500);
+            });
+          }
+        });
+      }
+    })();
+  </script>
 {% endblock %}
