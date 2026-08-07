@@ -91,6 +91,7 @@ CREATE TABLE IF NOT EXISTS movies (
     original_language VARCHAR(10),
     age_rating VARCHAR(20),
     poster_url TEXT,
+    backdrop_url TEXT,
     popular_rank SMALLINT CHECK (popular_rank IS NULL OR popular_rank > 0),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP

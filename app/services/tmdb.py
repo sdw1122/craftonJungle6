@@ -211,6 +211,7 @@ def normalize_movie_detail(
         "runtime_minutes": movie.get("runtime"),
         "original_language": movie.get("original_language"),
         "poster_url": TMDBClient.image_url(movie.get("poster_path")),
+        "backdrop_url": TMDBClient.image_url(movie.get("backdrop_path"), "w1280"),
         "genres": [
             {"tmdb_id": genre.get("id"), "name": genre.get("name")}
             for genre in movie.get("genres") or []

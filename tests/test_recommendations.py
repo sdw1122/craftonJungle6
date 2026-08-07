@@ -2,7 +2,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 from flask_login import UserMixin
 
@@ -18,7 +18,6 @@ from app.services.recommendations import (
     should_exclude_known_movie,
 )
 from app.services.movie_catalog import MovieCatalogSyncError, collect_popular_movies
-from app.services.movie_catalog_query import MoviePage
 
 
 class FakeAI:
@@ -300,7 +299,7 @@ class RecommendationRouteTests(unittest.TestCase):
 
 
 class RecommendationHomeTests(unittest.TestCase):
-    def test_logged_in_home_contains_async_recommendation_section(self):
+    def test_logged_in_home_contains_personalized_ranking_section(self):
         app = create_app({"TESTING": True})
         app.login_manager._user_callback = lambda _user_id: LoggedInUser()
         client = app.test_client()
@@ -308,16 +307,19 @@ class RecommendationHomeTests(unittest.TestCase):
             session["_user_id"] = LoggedInUser.id
             session["_fresh"] = True
 
-        empty_page = MoviePage(movies=[], page=1, total_pages=0, total_results=0)
-        with patch("app.routes.pages.list_catalog_movies", return_value=empty_page):
+        with (
+            patch("app.routes.pages.active_subscription_provider_ids", return_value=[]),
+            patch("app.routes.pages.list_ranked_movies", return_value=[]),
+            patch("app.routes.pages.list_personalized_movies", return_value=[]),
+            patch("app.routes.pages.list_ott_rankings", return_value=[]),
+        ):
             response = client.get("/")
         html = response.get_data(as_text=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn("정글님을 위한 추천", html)
-        self.assertIn("/api/recommendations", html)
-        self.assertIn("js/recommendations.js", html)
-        self.assertIn("추천받기", html)
+        self.assertIn("맞춤 랭킹", html)
+        self.assertIn("선호 장르와 감상 기록", html)
+        self.assertIn("구독 OTT 설정", html)
 
     def test_home_recommendations_only_generate_after_button_click(self):
         script_path = Path(__file__).resolve().parents[1] / "app" / "static" / "js" / "recommendations.js"
@@ -327,6 +329,29 @@ class RecommendationHomeTests(unittest.TestCase):
         self.assertNotIn("data.getUrl", script)
         self.assertIn('refresh.addEventListener("click", () => generate(true));', script)
         self.assertIn('setState("empty");', script)
+
+    def test_logged_in_home_builds_all_and_subscription_rankings(self):
+        app = create_app({"TESTING": True})
+        app.login_manager._user_callback = lambda _user_id: LoggedInUser()
+        client = app.test_client()
+        with client.session_transaction() as session:
+            session["_user_id"] = LoggedInUser.id
+            session["_fresh"] = True
+
+        with (
+            patch("app.routes.pages.active_subscription_provider_ids", return_value=[1, 2]),
+            patch("app.routes.pages.list_ranked_movies", return_value=[]) as ranked,
+            patch("app.routes.pages.list_personalized_movies", return_value=[]),
+            patch("app.routes.pages.list_ott_rankings", return_value=[]),
+        ):
+            response = client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            ranked.call_args_list,
+            [call(limit=3), call(limit=3, provider_ids=[1, 2])],
+        )
+        self.assertIn("내 구독 OTT TOP 3", response.get_data(as_text=True))
 
 
 if __name__ == "__main__":

@@ -1,126 +1,270 @@
 {% extends "base.html" %}
 
-{% block title %}{{ '검색 결과' if query else '인기 영화' }} | 영화 콘텐츠{% endblock %}
-{% block main_class %} catalog-container{% endblock %}
-
-{% block content %}
-  {% if current_user.is_authenticated %}
-    <section
-      id="recommendation-section"
-      class="recommendation-section"
-      data-post-url="{{ url_for('recommendations.generate_recommendations') }}"
-      aria-labelledby="recommendation-title"
-    >
-      <div class="recommendation-heading">
-        <div>
-          <p class="recommendation-eyebrow">AI PERSONALIZED PICKS</p>
-          <h1 id="recommendation-title">{{ current_user.nickname }}님을 위한 추천</h1>
-          <p>선호 장르와 찜·시청·별점 활동을 바탕으로 골랐어요.</p>
-        </div>
-        <button id="recommendation-refresh" class="recommendation-refresh" type="button">
-          추천받기
-        </button>
-      </div>
-
-      <div id="recommendation-loading" class="recommendation-status" role="status">
-        <span class="recommendation-spinner" aria-hidden="true"></span>
-        취향에 맞는 영화를 고르고 있어요.
-      </div>
-      <div id="recommendation-error" class="recommendation-status recommendation-error" role="alert" hidden>
-        <strong>추천을 불러오지 못했어요.</strong>
-        <span>잠시 후 다시 시도해 주세요.</span>
-      </div>
-      <div id="recommendation-empty" class="recommendation-status" hidden>
-        추천받기 버튼을 눌러주세요.
-      </div>
-      <div id="recommendation-grid" class="recommendation-grid" hidden></div>
-      <p id="recommendation-meta" class="recommendation-meta" hidden></p>
-      <p class="recommendation-attribution">OTT 제공 정보: JustWatch via TMDB</p>
-      <noscript><p class="recommendation-status">AI 추천을 보려면 JavaScript를 활성화해 주세요.</p></noscript>
-    </section>
-  {% endif %}
-
-  <section class="content-heading">
-    <div>
-      <h1>{{ '검색 결과' if query else '인기 영화' }}</h1>
-      {% if query and not error_message %}
-        <p>“{{ query }}” 검색 결과 {{ total_results }}개</p>
-      {% else %}
-        <p>최근 동기화된 인기 영화를 확인하세요.</p>
-      {% endif %}
-    </div>
-
-    <form class="search-form" method="get" action="{{ url_for('pages.index') }}">
-      <label for="movie-query">영화 제목 검색</label>
-      <div class="search-row">
-        <input
-          id="movie-query"
-          name="query"
-          type="search"
-          value="{{ query }}"
-          placeholder="영화 제목을 입력하세요"
-        >
-        <button type="submit">검색</button>
-      </div>
-    </form>
-  </section>
-
-  {% if error_message %}
-    <section class="message-box error-message" role="alert">
-      <h2>콘텐츠를 불러오지 못했습니다.</h2>
-      <p>{{ error_message }}</p>
-      <a href="{{ url_for('pages.index') }}">인기 영화로 돌아가기</a>
-    </section>
-  {% elif movies %}
-    <section class="movie-grid" aria-label="영화 목록">
+{% macro ranking_grid(movies, empty_message) %}
+  {% if movies %}
+    <div class="ranking-grid">
       {% for movie in movies %}
-        <article class="movie-card">
-          <a href="{{ url_for('pages.movie_detail', tmdb_id=movie.tmdb_id) }}">
-            {% if movie.poster_url %}
+        <article class="ranking-card">
+          <a class="ranking-card-link" href="{{ url_for('pages.movie_detail', tmdb_id=movie.tmdb_id) }}">
+            {% set visual_url = movie.backdrop_url or movie.poster_url %}
+            {% if visual_url %}
               <img
-                class="movie-poster"
-                src="{{ movie.poster_url }}"
-                alt="{{ movie.title or movie.original_title }} 포스터"
+                class="ranking-card-image"
+                src="{{ visual_url }}"
+                alt="{{ movie.title or movie.original_title }} 배경 이미지"
                 loading="lazy"
               >
             {% else %}
-              <div class="poster-placeholder">포스터 없음</div>
+              <div class="ranking-card-image ranking-card-placeholder" aria-hidden="true">JUNGLELIGHTS</div>
             {% endif %}
-            <div class="movie-card-body">
-              <h2>{{ movie.title or movie.original_title or '제목 없음' }}</h2>
-              <p>{{ movie.release_date[:4] if movie.release_date else '개봉일 미정' }}</p>
-            </div>
+            <span class="ranking-card-shade" aria-hidden="true"></span>
+            <strong class="ranking-number">{{ loop.index }}</strong>
+
+            {% if movie.providers %}
+              <span class="ranking-provider-stack" aria-label="제공 OTT">
+                {% for provider in movie.providers[:3] %}
+                  {% set icon = ott_icons.get(provider.code, default_ott_icon) %}
+                  <span class="ranking-provider-icon" style="--provider-color: {{ icon.color }}" title="{{ provider.name }}">
+                    {{ icon.text }}
+                  </span>
+                {% endfor %}
+              </span>
+            {% endif %}
+
+            <span class="ranking-card-copy">
+              <span class="ranking-card-meta">
+                {{ movie.release_date[:4] if movie.release_date else '공개일 미정' }}
+                {% if movie.providers %}
+                  · {{ movie.providers | map(attribute='name') | join(', ') }}
+                {% endif %}
+              </span>
+              <span class="ranking-card-title">{{ movie.title or movie.original_title or '제목 없음' }}</span>
+              <span class="ranking-card-action">자세히 보기 <span aria-hidden="true">→</span></span>
+            </span>
           </a>
         </article>
       {% endfor %}
+    </div>
+  {% else %}
+    <div class="ranking-empty">
+      <span aria-hidden="true">🍿</span>
+      <p>{{ empty_message }}</p>
+    </div>
+  {% endif %}
+{% endmacro %}
+
+{% block title %}홈 | Junglelights{% endblock %}
+{% block body_class %}dark-page home-ranking-page{% endblock %}
+{% block main_class %} home-ranking-container{% endblock %}
+
+{% block content %}
+  {% if home_mode %}
+    <section class="ranking-hero">
+      <div>
+        <p class="ranking-kicker">YOUR STREAMING GUIDE</p>
+        <h1>오늘 뭐 볼까?</h1>
+        <p>구독 중인 OTT와 취향을 한 번에 비교해 지금 볼 작품을 골라보세요.</p>
+      </div>
+      <form class="ranking-search" method="get" action="{{ url_for('pages.index') }}">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <label class="sr-only" for="home-movie-query">영화, 배우 또는 감독 검색</label>
+        <input id="home-movie-query" name="query" type="search" placeholder="영화, 배우 또는 감독 검색">
+        <button type="submit">검색</button>
+      </form>
     </section>
 
-    <nav class="pagination" aria-label="영화 목록 페이지">
-      {% if page > 1 %}
-        <a href="{{ url_for('pages.index', query=query, page=page - 1) if query else url_for('pages.index', page=page - 1) }}">이전</a>
-      {% else %}
-        <span aria-disabled="true">이전</span>
-      {% endif %}
+    <section class="ranking-section ranking-tab-section" aria-labelledby="ott-tab-ranking-title">
+      <div class="ranking-section-header ranking-tab-intro">
+        <div>
+          <p class="ranking-section-eyebrow">OTT RANKING</p>
+          <h2 id="ott-tab-ranking-title">OTT 랭킹</h2>
+          <p>전체, 내 구독 서비스 또는 원하는 OTT를 선택해 비교해보세요.</p>
+        </div>
+      </div>
 
-      <strong>{{ page }} / {{ total_pages or 1 }}</strong>
+      <div class="ranking-tabs" role="tablist" aria-label="OTT 랭킹 선택">
+        {% for tab in ranking_tabs %}
+          <button
+            type="button"
+            id="ranking-tab-{{ tab.key }}"
+            class="ranking-tab{{ ' active' if loop.first else '' }}"
+            role="tab"
+            aria-selected="{{ 'true' if loop.first else 'false' }}"
+            aria-controls="ranking-panel-{{ tab.key }}"
+            tabindex="{{ '0' if loop.first else '-1' }}"
+            data-ranking-tab="{{ tab.key }}"
+          >
+            {% if tab.icon %}
+              <span class="ranking-tab-icon" style="--provider-color: {{ tab.icon.color }}">{{ tab.icon.text }}</span>
+            {% endif %}
+            {{ tab.label }}
+          </button>
+        {% endfor %}
+      </div>
 
-      {% if page < total_pages %}
-        <a href="{{ url_for('pages.index', query=query, page=page + 1) if query else url_for('pages.index', page=page + 1) }}">다음</a>
+      <div class="ranking-tab-panels">
+        {% for tab in ranking_tabs %}
+          <section
+            id="ranking-panel-{{ tab.key }}"
+            class="ranking-tab-panel"
+            role="tabpanel"
+            aria-labelledby="ranking-tab-{{ tab.key }}"
+            data-ranking-panel="{{ tab.key }}"
+            {{ 'hidden' if not loop.first else '' }}
+          >
+            <div class="ranking-tab-panel-header">
+              <div>
+                <h3>{{ tab.title }}</h3>
+                <p>{{ tab.description }}</p>
+              </div>
+              <span>최근 동기화 기준</span>
+            </div>
+
+            {% if tab.requires_login %}
+              <div class="ranking-tab-state">
+                <div>
+                  <strong>로그인하고 내 구독 OTT 랭킹을 확인하세요</strong>
+                  <p>구독 중인 서비스를 합쳐 지금 볼 수 있는 인기 작품 세 편을 보여드려요.</p>
+                </div>
+                <a href="{{ url_for('auth.login') }}">로그인하기</a>
+              </div>
+            {% elif tab.requires_subscription %}
+              <div class="ranking-tab-state">
+                <div>
+                  <strong>구독 중인 OTT를 먼저 설정해주세요</strong>
+                  <p>서비스를 선택하면 해당 OTT에서 볼 수 있는 인기 작품을 합산합니다.</p>
+                </div>
+                <button type="button" id="ranking-ott-edit">구독 OTT 설정</button>
+              </div>
+            {% else %}
+              {{ ranking_grid(tab.movies, tab.empty_message) }}
+            {% endif %}
+          </section>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="ranking-section ranking-section-personal" aria-labelledby="personal-ranking-title">
+      <div class="ranking-section-header">
+        <div>
+          <p class="ranking-section-eyebrow ranking-section-eyebrow-purple">FOR YOU</p>
+          <h2 id="personal-ranking-title">맞춤 랭킹</h2>
+          <p>선호 장르와 감상 기록을 반영해 고른 세 작품이에요.</p>
+        </div>
+      </div>
+      {% if current_user.is_authenticated %}
+        {{ ranking_grid(personalized_movies, '취향에 맞는 영화를 준비 중이에요. 영화를 동기화하거나 선호 장르를 설정해주세요.') }}
       {% else %}
-        <span aria-disabled="true">다음</span>
+        <div class="personal-login-card">
+          <div>
+            <span class="personal-login-icon" aria-hidden="true">✦</span>
+            <h3>나만의 랭킹을 만나보세요</h3>
+            <p>로그인하고 선호 장르와 OTT를 설정하면 맞춤 영화 세 편을 골라드려요.</p>
+          </div>
+          <a href="{{ url_for('auth.login') }}">로그인하기</a>
+        </div>
       {% endif %}
-    </nav>
+    </section>
+
+    <p class="ranking-source">영화 및 OTT 제공 정보: TMDB · JustWatch 데이터 동기화 기준</p>
   {% else %}
-    <section class="message-box">
-      <h2>검색 결과가 없습니다.</h2>
-      <p>다른 제목으로 검색해 보세요.</p>
-      <a href="{{ url_for('pages.index') }}">인기 영화 보기</a>
+    <section class="catalog-search-page">
+      <a class="catalog-back-link" href="{{ url_for('pages.index') }}">← 랭킹 홈</a>
+      <div class="catalog-search-heading">
+        <div>
+          <p class="ranking-section-eyebrow">SEARCH</p>
+          <h1>“{{ query }}” 검색 결과</h1>
+          <p>DB에 동기화된 영화 {{ total_results }}개를 찾았습니다.</p>
+        </div>
+        <form class="ranking-search" method="get" action="{{ url_for('pages.index') }}">
+          <label class="sr-only" for="result-movie-query">영화 검색</label>
+          <input id="result-movie-query" name="query" type="search" value="{{ query }}" required>
+          <button type="submit">검색</button>
+        </form>
+      </div>
+
+      {% if movies %}
+        <div class="catalog-result-grid">
+          {% for movie in movies %}
+            <a class="catalog-result-card" href="{{ url_for('pages.movie_detail', tmdb_id=movie.tmdb_id) }}">
+              {% if movie.poster_url %}
+                <img src="{{ movie.poster_url }}" alt="{{ movie.title or movie.original_title }} 포스터" loading="lazy">
+              {% else %}
+                <span class="catalog-result-placeholder">포스터 없음</span>
+              {% endif %}
+              <strong>{{ movie.title or movie.original_title }}</strong>
+              <span>{{ movie.release_date[:4] if movie.release_date else '공개일 미정' }}</span>
+            </a>
+          {% endfor %}
+        </div>
+
+        <nav class="dark-pagination" aria-label="검색 결과 페이지">
+          {% if page > 1 %}
+            <a href="{{ url_for('pages.index', query=query, page=page - 1) }}">이전</a>
+          {% else %}
+            <span>이전</span>
+          {% endif %}
+          <strong>{{ page }} / {{ total_pages or 1 }}</strong>
+          {% if page < total_pages %}
+            <a href="{{ url_for('pages.index', query=query, page=page + 1) }}">다음</a>
+          {% else %}
+            <span>다음</span>
+          {% endif %}
+        </nav>
+      {% else %}
+        <div class="ranking-empty search-empty">
+          <span aria-hidden="true">🔎</span>
+          <p>검색 결과가 없습니다. 다른 제목이나 인물 이름으로 검색해보세요.</p>
+        </div>
+      {% endif %}
     </section>
   {% endif %}
 {% endblock %}
 
 {% block scripts %}
-  {% if current_user.is_authenticated %}
-    <script src="{{ url_for('static', filename='js/recommendations.js') }}" defer></script>
+  {% if home_mode %}
+    <script>
+      (function () {
+        var tabs = Array.from(document.querySelectorAll("[data-ranking-tab]"));
+        var panels = Array.from(document.querySelectorAll("[data-ranking-panel]"));
+
+        function activateTab(tab, moveFocus) {
+          var key = tab.dataset.rankingTab;
+          tabs.forEach(function (item) {
+            var selected = item === tab;
+            item.classList.toggle("active", selected);
+            item.setAttribute("aria-selected", String(selected));
+            item.tabIndex = selected ? 0 : -1;
+          });
+          panels.forEach(function (panel) {
+            panel.hidden = panel.dataset.rankingPanel !== key;
+          });
+          if (moveFocus) tab.focus();
+        }
+
+        tabs.forEach(function (tab, index) {
+          tab.addEventListener("click", function () { activateTab(tab, false); });
+          tab.addEventListener("keydown", function (event) {
+            var nextIndex = null;
+            if (event.key === "ArrowRight") nextIndex = (index + 1) % tabs.length;
+            if (event.key === "ArrowLeft") nextIndex = (index - 1 + tabs.length) % tabs.length;
+            if (event.key === "Home") nextIndex = 0;
+            if (event.key === "End") nextIndex = tabs.length - 1;
+            if (nextIndex === null) return;
+            event.preventDefault();
+            activateTab(tabs[nextIndex], true);
+          });
+        });
+
+        var editButton = document.getElementById("ranking-ott-edit");
+        var modalTrigger = document.getElementById("ott-modal-trigger");
+        if (editButton && modalTrigger) {
+          editButton.addEventListener("click", function () { modalTrigger.click(); });
+        }
+      })();
+    </script>
   {% endif %}
 {% endblock %}
