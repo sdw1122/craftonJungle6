@@ -32,11 +32,18 @@ def index():
 
     tmdb = get_tmdb_client()
     try:
-        result = (
-            tmdb.search_movies(query, page)
-            if query
-            else tmdb.get_popular_movies(page)
-        )
+        if query:
+            # 1차 시도: 영화 제목으로 먼저 검색
+            result = tmdb.search_movies(query, page)
+            
+            # 2차 시도: 만약 영화 제목 검색 결과가 0개라면
+            # 사용자가 입력한 것이 배우/감독 이름일 수 있으므로 인물 검색 로직을 발동
+            if not result.get("results"):
+                result = tmdb.search_by_person(query, page)
+        else:
+            # 검색어가 없으면 평소처럼 인기 영화를 가져옴
+            result = tmdb.get_popular_movies(page)
+            
     except TMDBError as exc:
         return render_template(
             "movies/index.html",
