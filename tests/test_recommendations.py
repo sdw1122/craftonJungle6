@@ -18,6 +18,7 @@ from app.services.recommendations import (
     should_exclude_known_movie,
 )
 from app.services.movie_catalog import MovieCatalogSyncError, collect_popular_movies
+from app.services.movie_catalog_query import MoviePage
 
 
 class FakeAI:
@@ -47,13 +48,6 @@ class FakeRecommendationService:
             "expires_at": "2026-08-07T00:00:00+00:00",
             "recommendations": [{"tmdb_id": 10, "title": "추천 영화"}],
         }
-
-
-class FakeTMDBForPages:
-    is_configured = True
-
-    def get_popular_movies(self, page=1):
-        return {"page": page, "total_pages": 1, "total_results": 0, "results": []}
 
 
 class LoggedInUser(UserMixin):
@@ -308,14 +302,15 @@ class RecommendationRouteTests(unittest.TestCase):
 class RecommendationHomeTests(unittest.TestCase):
     def test_logged_in_home_contains_async_recommendation_section(self):
         app = create_app({"TESTING": True})
-        app.extensions["tmdb_client"] = FakeTMDBForPages()
         app.login_manager._user_callback = lambda _user_id: LoggedInUser()
         client = app.test_client()
         with client.session_transaction() as session:
             session["_user_id"] = LoggedInUser.id
             session["_fresh"] = True
 
-        response = client.get("/")
+        empty_page = MoviePage(movies=[], page=1, total_pages=0, total_results=0)
+        with patch("app.routes.pages.list_catalog_movies", return_value=empty_page):
+            response = client.get("/")
         html = response.get_data(as_text=True)
 
         self.assertEqual(response.status_code, 200)
