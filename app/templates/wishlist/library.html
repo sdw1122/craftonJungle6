@@ -7,7 +7,7 @@
 
     <div class="library-tabs">
       {% for value, label in tabs.items() %}
-        <a href="{{ url_for('wishlist.library', status=value, ott=ott_filter) }}"
+        <a href="{{ url_for('wishlist.library', status=value, ott='all') }}"
           class="library-tab{{ ' active' if status == value else '' }}">{{ label }}</a>
       {% endfor %}
     </div>
