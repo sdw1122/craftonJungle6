@@ -1,7 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
-from flask import Blueprint, abort, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from ..extensions import db
 from ..models import Movie, OTTAvailability, OTTProvider, UserMovieLibrary
@@ -97,36 +98,55 @@ def _serialize(entry: UserMovieLibrary) -> dict:
     }
 
 
+def _mutation_error(message: str, status_code: int):
+    if request.is_json:
+        return jsonify({"message": message}), status_code
+    flash(message)
+    return redirect(request.referrer or url_for("pages.index"))
+
+
 @wishlist_bp.route("/<int:tmdb_id>", methods=["POST"])
 @login_required
 def upsert(tmdb_id: int):
     payload = request.get_json(silent=True) or request.form
 
-    movie = get_or_create_movie(
-        tmdb_id=tmdb_id,
-        title=payload.get("title"),
-        overview=payload.get("overview"),
-        release_date=payload.get("release_date"),
-        poster_url=payload.get("poster_url"),
-    )
-    entry = _get_or_create_entry(movie.id)
-
-    if "is_wishlisted" in payload:
-        raw = payload.get("is_wishlisted")
-        entry.is_wishlisted = str(raw).strip().lower() in ("1", "true", "on", "yes")
-
+    watch_status = None
     if "watch_status" in payload:
         watch_status = payload.get("watch_status") or None
         if watch_status is not None and watch_status not in UserMovieLibrary.WATCH_STATUSES:
             abort(400, description=f"watch_status must be one of {UserMovieLibrary.WATCH_STATUSES}")
-        entry.watch_status = watch_status
-        if watch_status == "WATCHING" and entry.started_at is None:
-            entry.started_at = datetime.utcnow()
-        if watch_status == "WATCHED":
-            entry.watched_at = datetime.utcnow()
 
-    entry.updated_at = datetime.utcnow()
-    db.session.commit()
+    try:
+        movie = get_or_create_movie(
+            tmdb_id=tmdb_id,
+            title=payload.get("title"),
+            overview=payload.get("overview"),
+            release_date=payload.get("release_date"),
+            poster_url=payload.get("poster_url"),
+        )
+        entry = _get_or_create_entry(movie.id)
+
+        if "is_wishlisted" in payload:
+            raw = payload.get("is_wishlisted")
+            entry.is_wishlisted = str(raw).strip().lower() in ("1", "true", "on", "yes")
+
+        if "watch_status" in payload:
+            entry.watch_status = watch_status
+            if watch_status == "WATCHING" and entry.started_at is None:
+                entry.started_at = datetime.now(timezone.utc)
+            if watch_status == "WATCHED":
+                entry.watched_at = datetime.now(timezone.utc)
+
+        entry.updated_at = datetime.now(timezone.utc)
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        current_app.logger.warning("Wishlist update conflict", exc_info=True)
+        return _mutation_error("찜 또는 시청 상태가 동시에 변경되었습니다. 다시 시도해 주세요.", 409)
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception("Failed to update wishlist")
+        return _mutation_error("찜 또는 시청 상태를 저장하지 못했습니다.", 503)
 
     if request.is_json:
         return jsonify(_serialize(entry))
@@ -137,12 +157,17 @@ def upsert(tmdb_id: int):
 @wishlist_bp.route("/<int:tmdb_id>", methods=["DELETE"])
 @login_required
 def remove(tmdb_id: int):
-    movie = Movie.query.filter_by(tmdb_id=tmdb_id).first()
-    if movie is None:
-        abort(404)
-    entry = UserMovieLibrary.query.filter_by(user_id=current_user.id, movie_id=movie.id).first()
-    if entry is None:
-        abort(404)
-    db.session.delete(entry)
-    db.session.commit()
+    try:
+        movie = Movie.query.filter_by(tmdb_id=tmdb_id).first()
+        if movie is None:
+            abort(404)
+        entry = UserMovieLibrary.query.filter_by(user_id=current_user.id, movie_id=movie.id).first()
+        if entry is None:
+            abort(404)
+        db.session.delete(entry)
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception("Failed to delete wishlist entry")
+        return _mutation_error("찜 또는 시청 기록을 삭제하지 못했습니다.", 503)
     return "", 204

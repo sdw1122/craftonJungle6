@@ -5,6 +5,7 @@
     <div class="progress-bar"><span style="width: 100%"></span></div>
     <h1>구독 중인 서비스를 알려주세요</h1>
     <p class="description">여러 개 선택할 수 있어요.</p>
+    {% if error %}<p class="field-error">{{ error }}</p>{% endif %}
 
     <form method="post" class="onboarding-form">
       <div class="ott-grid">

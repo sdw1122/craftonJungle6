@@ -26,6 +26,9 @@ def sync_popular_movies(limit: int) -> None:
         )
     except MovieCatalogSyncError as exc:
         raise click.ClickException(str(exc)) from exc
+    except SQLAlchemyError as exc:
+        db.session.rollback()
+        raise click.ClickException("영화 카탈로그를 데이터베이스에 저장하지 못했습니다.") from exc
 
     click.echo(
         "동기화 완료: "

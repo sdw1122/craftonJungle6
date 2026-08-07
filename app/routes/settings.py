@@ -1,5 +1,6 @@
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+from sqlalchemy.exc import SQLAlchemyError
 
 from ..extensions import db
 from ..models import AuthAccount
@@ -64,7 +65,13 @@ def change_password():
         return redirect(url_for("settings.change_password"))
 
     local_account.set_password(new_password)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception("Failed to change local password")
+        flash("비밀번호를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.")
+        return redirect(url_for("settings.change_password"))
 
     flash("비밀번호가 성공적으로 변경되었습니다.")
     return redirect(url_for("pages.settings"))
