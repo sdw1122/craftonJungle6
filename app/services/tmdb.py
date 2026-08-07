@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import Any
 
 import requests
-from flask import current_app
 
 
 @dataclass
@@ -172,21 +171,6 @@ class TMDBClient:
         return f"{cls.IMAGE_BASE_URL}/{size}{path}"
 
 
-def get_tmdb_client() -> TMDBClient:
-    return current_app.extensions["tmdb_client"]
-
-
-def normalize_search_movie(movie: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "tmdb_id": movie["id"],
-        "title": movie.get("title"),
-        "original_title": movie.get("original_title"),
-        "overview": movie.get("overview"),
-        "release_date": movie.get("release_date") or None,
-        "poster_url": TMDBClient.image_url(movie.get("poster_path")),
-    }
-
-
 def normalize_movie_detail(
     movie: dict[str, Any],
     provider_response: dict[str, Any],
@@ -249,4 +233,3 @@ def normalize_movie_detail(
     }
 
 
-      

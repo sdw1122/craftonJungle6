@@ -254,6 +254,15 @@ body {
   padding: 24px;
 }
 
+body.dark-page {
+  background: #000000;
+}
+
+body.dark-page .container {
+  display: block;
+  padding: 0;
+}
+
 .container.catalog-container {
   display: block;
   width: min(100%, 1240px);
@@ -1038,11 +1047,9 @@ h1 {
 }
 
 .library-page {
-  width: min(1080px, 94vw);
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 40px 32px;
-  background: #101010;
-  border-radius: 24px;
+  padding: 48px 32px 80px;
   color: #ffffff;
 }
 
@@ -1112,29 +1119,50 @@ h1 {
   font-size: 10px;
 }
 
-.library-count {
-  color: #9aa4b2;
-  font-weight: 600;
+.library-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 16px;
 }
 
-.library-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+.library-count {
+  color: #9aa4b2;
+  font-weight: 600;
+}
+
+.library-sort {
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: #1c1c1c;
+  color: #e5e8ec;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.library-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-height: 320px;
+}
+
+.library-row {
+  display: flex;
+  align-items: center;
   gap: 20px;
+  height: 135px;
 }
 
-.library-card {
-  text-decoration: none;
-  color: inherit;
-  display: block;
+.library-row-poster-link {
+  flex-shrink: 0;
 }
 
-.library-poster {
-  width: 100%;
+.library-row-poster {
+  width: 90px;
   aspect-ratio: 2 / 3;
   object-fit: cover;
-  border-radius: 12px;
+  border-radius: 10px;
   background: #1c1c1c;
   display: block;
 }
@@ -1144,22 +1172,50 @@ h1 {
   align-items: center;
   justify-content: center;
   color: #6b7280;
-  font-size: 13px;
+  font-size: 12px;
+  text-align: center;
 }
 
-.library-card-info {
-  margin-top: 8px;
+.library-row-info {
+  flex: 1;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
 }
 
-.library-card-info strong {
+.library-row-info strong {
   display: block;
-  font-size: 14px;
+  font-size: 18px;
   color: #ffffff;
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.library-year {
+.library-row-meta {
   color: #9aa4b2;
-  font-size: 13px;
+  font-size: 14px;
+}
+
+.library-row-remove-form {
+  flex-shrink: 0;
+}
+
+.library-row-remove {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: none;
+  background: #2a2a2a;
+  color: #ffffff;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.library-row-remove:hover {
+  background: #3a3a3a;
 }
 
 .review-form {

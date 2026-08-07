@@ -5,8 +5,18 @@ from datetime import date, datetime, timezone
 from typing import Any
 
 from ..extensions import db
-from ..models import Genre, Movie, MovieGenre, MovieTitle
-from .tmdb import TMDBClient, TMDBError
+from ..models import (
+    Genre,
+    Movie,
+    MovieCredit,
+    MovieGenre,
+    MovieTitle,
+    OTTAvailability,
+    OTTProvider,
+    Person,
+)
+from ..ott_icons import TMDB_PROVIDER_NAME_TO_CODE
+from .tmdb import TMDBClient, TMDBError, normalize_movie_detail
 
 
 TMDB_GENRES: dict[int, tuple[str, str]] = {
@@ -86,20 +96,33 @@ class MovieCatalogSyncService:
 
     def sync_popular(self, limit: int = 100) -> MovieCatalogSyncResult:
         try:
-            movies = collect_popular_movies(self.tmdb, limit)
+            popular_movies = collect_popular_movies(self.tmdb, limit)
+            movies = []
+            for rank, summary in enumerate(popular_movies, start=1):
+                tmdb_id = int(summary["id"])
+                detail = self.tmdb.get_movie(tmdb_id)
+                providers = self.tmdb.get_watch_providers(tmdb_id)
+                movies.append((rank, normalize_movie_detail(detail, providers)))
         except TMDBError as exc:
             raise MovieCatalogSyncError(exc.message) from exc
 
         now = datetime.now(timezone.utc)
+        today = date.today()
         genres_by_code = {genre.code: genre for genre in Genre.query.all()}
+        providers_by_code = {provider.code: provider for provider in OTTProvider.query.all()}
         created = 0
         updated = 0
         titles_synced = 0
         genre_links_synced = 0
 
         try:
-            for payload in movies:
-                tmdb_id = int(payload["id"])
+            Movie.query.filter(Movie.popular_rank.isnot(None)).update(
+                {Movie.popular_rank: None},
+                synchronize_session=False,
+            )
+
+            for rank, payload in movies:
+                tmdb_id = int(payload["tmdb_id"])
                 movie = Movie.query.filter_by(tmdb_id=tmdb_id).first()
                 if movie is None:
                     movie = Movie(
@@ -123,8 +146,10 @@ class MovieCatalogSyncService:
                 ).strip()
                 movie.overview = (payload.get("overview") or "").strip() or None
                 movie.release_date = _parse_release_date(payload.get("release_date"))
+                movie.runtime_minutes = payload.get("runtime_minutes") or None
                 movie.original_language = payload.get("original_language") or None
-                movie.poster_url = TMDBClient.image_url(payload.get("poster_path"))
+                movie.poster_url = payload.get("poster_url")
+                movie.popular_rank = rank
                 movie.updated_at = now
 
                 localized_title = (
@@ -149,8 +174,8 @@ class MovieCatalogSyncService:
                 titles_synced += 1
 
                 MovieGenre.query.filter_by(movie_id=movie.id).delete(synchronize_session=False)
-                for tmdb_genre_id in payload.get("genre_ids") or []:
-                    genre_info = TMDB_GENRES.get(int(tmdb_genre_id))
+                for genre_payload in payload.get("genres") or []:
+                    genre_info = TMDB_GENRES.get(int(genre_payload["tmdb_id"]))
                     if genre_info is None:
                         continue
                     genre = genres_by_code.get(genre_info[0])
@@ -158,6 +183,55 @@ class MovieCatalogSyncService:
                         continue
                     db.session.add(MovieGenre(movie_id=movie.id, genre_id=genre.id))
                     genre_links_synced += 1
+
+                MovieCredit.query.filter_by(movie_id=movie.id).delete(synchronize_session=False)
+                credit_payloads = [
+                    ("DIRECTOR", director)
+                    for director in payload.get("directors") or []
+                ] + [
+                    ("ACTOR", actor)
+                    for actor in payload.get("cast") or []
+                ]
+                for credit_type, person_payload in credit_payloads:
+                    person_tmdb_id = int(person_payload["tmdb_id"])
+                    person = Person.query.filter_by(tmdb_id=person_tmdb_id).first()
+                    if person is None:
+                        person = Person(
+                            tmdb_id=person_tmdb_id,
+                            primary_name=person_payload["name"],
+                        )
+                        db.session.add(person)
+                        db.session.flush()
+                    else:
+                        person.primary_name = person_payload["name"]
+                    db.session.add(MovieCredit(
+                        movie_id=movie.id,
+                        person_id=person.id,
+                        credit_type=credit_type,
+                        character_name=person_payload.get("character_name"),
+                        billing_order=person_payload.get("billing_order"),
+                    ))
+
+                OTTAvailability.query.filter_by(movie_id=movie.id).delete(
+                    synchronize_session=False
+                )
+                for availability in payload.get("watch_providers") or []:
+                    provider_code = TMDB_PROVIDER_NAME_TO_CODE.get(availability.get("name"))
+                    provider = providers_by_code.get(provider_code)
+                    offer_type = availability.get("offer_type")
+                    if provider is None or offer_type not in {"SUBSCRIPTION", "FREE", "RENT", "BUY"}:
+                        continue
+                    db.session.add(OTTAvailability(
+                        movie_id=movie.id,
+                        provider_id=provider.id,
+                        region_code="KR",
+                        offer_type=offer_type,
+                        available_from=today,
+                        content_url=payload.get("watch_provider_link"),
+                        source="TMDB",
+                        source_updated_at=now,
+                        last_checked_at=now,
+                    ))
 
             db.session.commit()
         except Exception:
@@ -171,3 +245,11 @@ class MovieCatalogSyncService:
             titles_synced=titles_synced,
             genre_links_synced=genre_links_synced,
         )
+
+
+def sync_popular_movie_catalog(
+    *,
+    access_token: str | None,
+    limit: int = 100,
+) -> MovieCatalogSyncResult:
+    return MovieCatalogSyncService(TMDBClient(access_token)).sync_popular(limit)

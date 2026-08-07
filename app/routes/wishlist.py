@@ -50,6 +50,11 @@ def library():
         }
         movies_by_id = {mid: m for mid, m in movies_by_id.items() if mid in available_ids}
 
+    if status == "wishlisted":
+        remove_payload = {"is_wishlisted": "false"}
+    else:
+        remove_payload = {"watch_status": ""}
+
     items = [
         {"movie": movies_by_id[e.movie_id]}
         for e in entries
@@ -74,6 +79,7 @@ def library():
         my_subscriptions=my_subscriptions,
         ott_icons=OTT_ICONS,
         default_ott_icon=DEFAULT_OTT_ICON,
+        remove_payload=remove_payload,
     )
 
 

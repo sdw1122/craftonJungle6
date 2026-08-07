@@ -6,7 +6,7 @@
     <title>{% block title %}키노라이츠 클론{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   </head>
-  <body>
+  <body class="{% block body_class %}{% endblock %}">
     <header class="site-header">
       <div class="site-header-left">
         <a class="logo" href="{{ url_for('pages.index') }}">

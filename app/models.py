@@ -131,6 +131,7 @@ class Movie(db.Model):
     original_language = db.Column(db.String(10))
     age_rating = db.Column(db.String(20))
     poster_url = db.Column(db.Text)
+    popular_rank = db.Column(db.SmallInteger)
     created_at = db.Column(db.DateTime(timezone=True), server_default=db.text("CURRENT_TIMESTAMP"))
     updated_at = db.Column(db.DateTime(timezone=True), server_default=db.text("CURRENT_TIMESTAMP"))
 
@@ -154,6 +155,28 @@ class MovieGenre(db.Model):
     genre_id = db.Column(db.SmallInteger, db.ForeignKey("genres.id", ondelete="RESTRICT"), primary_key=True)
 
     genre = db.relationship("Genre")
+
+
+class Person(db.Model):
+    __tablename__ = "people"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, server_default=db.text("gen_random_uuid()"))
+    tmdb_id = db.Column(db.BigInteger, unique=True)
+    primary_name = db.Column(db.String(200), nullable=False)
+    birth_date = db.Column(db.Date)
+
+
+class MovieCredit(db.Model):
+    __tablename__ = "movie_credits"
+
+    id = db.Column(db.BigInteger, primary_key=True)
+    movie_id = db.Column(UUID(as_uuid=True), db.ForeignKey("movies.id", ondelete="CASCADE"), nullable=False)
+    person_id = db.Column(UUID(as_uuid=True), db.ForeignKey("people.id", ondelete="CASCADE"), nullable=False)
+    credit_type = db.Column(db.String(20), nullable=False)
+    character_name = db.Column(db.String(200))
+    billing_order = db.Column(db.SmallInteger)
+
+    person = db.relationship("Person")
 
 
 class UserMovieLibrary(db.Model):

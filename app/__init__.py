@@ -68,8 +68,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     from .routes.recommendations import recommendations_bp
     from .routes.search import search_bp
     from .routes.wishlist import wishlist_bp
-    from .services.tmdb import TMDBClient
-    from .cli import sync_popular_movies
+    from .cli import sync_popular_movies, upgrade_movie_catalog_schema
 
     project_root = Path(__file__).resolve().parent.parent
     app.jinja_loader = ChoiceLoader([
@@ -78,8 +77,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "movies": FileSystemLoader(str(project_root / "templates")),
         }),
     ])
-    app.extensions["tmdb_client"] = TMDBClient(os.getenv("TMDB_ACCESS_TOKEN"))
     app.cli.add_command(sync_popular_movies)
+    app.cli.add_command(upgrade_movie_catalog_schema)
 
     app.register_blueprint(pages_blueprint)
     app.register_blueprint(api_blueprint)

@@ -1,12 +1,13 @@
 {% extends "base.html" %}
 {% block title %}{{ page_title }} - 키노라이츠{% endblock %}
+{% block body_class %}dark-page{% endblock %}
 {% block content %}
   <section class="library-page">
     <h1>{{ page_title }}</h1>
 
     <div class="library-tabs">
       {% for value, label in tabs.items() %}
-        <a href="{{ url_for('wishlist.library', status=value, ott=ott_filter) }}"
+        <a href="{{ url_for('wishlist.library', status=value, ott='all') }}"
           class="library-tab{{ ' active' if status == value else '' }}">{{ label }}</a>
       {% endfor %}
     </div>
@@ -26,28 +27,39 @@
       </div>
     {% endif %}
 
-    <p class="library-count">{{ items|length }}편</p>
+    <div class="library-list-header">
+      <p class="library-count">{{ items|length }}편</p>
+      <span class="library-sort">추가순</span>
+    </div>
 
-    {% if items %}
-      <div class="library-grid">
+    <div class="library-list">
+      {% if items %}
         {% for item in items %}
-          <a class="library-card" href="{{ url_for('pages.movie_detail', tmdb_id=item.movie.tmdb_id) }}">
-            {% if item.movie.poster_url %}
-              <img src="{{ item.movie.poster_url }}" alt="{{ item.movie.original_title }} 포스터" class="library-poster">
-            {% else %}
-              <div class="library-poster library-poster-placeholder">포스터 없음</div>
-            {% endif %}
-            <div class="library-card-info">
-              <strong>{{ item.movie.original_title }}</strong>
-              {% if item.movie.release_date %}
-                <span class="library-year">{{ item.movie.release_date.year }}</span>
+          <div class="library-row">
+            <a class="library-row-poster-link" href="{{ url_for('pages.movie_detail', tmdb_id=item.movie.tmdb_id) }}">
+              {% if item.movie.poster_url %}
+                <img src="{{ item.movie.poster_url }}" alt="{{ item.movie.original_title }} 포스터" class="library-row-poster">
+              {% else %}
+                <div class="library-row-poster library-poster-placeholder">포스터 없음</div>
               {% endif %}
-            </div>
-          </a>
+            </a>
+            <a class="library-row-info" href="{{ url_for('pages.movie_detail', tmdb_id=item.movie.tmdb_id) }}">
+              <strong>{{ item.movie.original_title }}</strong>
+              <span class="library-row-meta">
+                영화{{ ' · ' ~ item.movie.release_date.year if item.movie.release_date else '' }}
+              </span>
+            </a>
+            <form method="post" action="{{ url_for('wishlist.upsert', tmdb_id=item.movie.tmdb_id) }}" class="library-row-remove-form">
+              {% for field_name, field_value in remove_payload.items() %}
+                <input type="hidden" name="{{ field_name }}" value="{{ field_value }}">
+              {% endfor %}
+              <button type="submit" class="library-row-remove" title="목록에서 빼기" aria-label="목록에서 빼기">&times;</button>
+            </form>
+          </div>
         {% endfor %}
-      </div>
-    {% else %}
-      <p class="helper-text">아직 담긴 콘텐츠가 없어요.</p>
-    {% endif %}
+      {% else %}
+        <p class="helper-text">아직 담긴 콘텐츠가 없어요.</p>
+      {% endif %}
+    </div>
   </section>
 {% endblock %}

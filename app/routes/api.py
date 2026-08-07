@@ -3,12 +3,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from ..extensions import db
-from ..services.tmdb import (
-    TMDBError,
-    get_tmdb_client,
-    normalize_movie_detail,
-    normalize_search_movie,
-)
+from ..services.movie_catalog_query import get_catalog_movie, list_catalog_movies
 
 
 api_blueprint = Blueprint("api", __name__, url_prefix="/api")
@@ -31,16 +26,15 @@ def hello(name: str):
 @api_blueprint.get("/health")
 def health():
     database_ready = database_is_ready()
-    tmdb = get_tmdb_client()
     return jsonify({
         "status": "ok" if database_ready else "error",
         "database": "connected" if database_ready else "disconnected",
-        "tmdb": "configured" if tmdb.is_configured else "not_configured",
     }), 200 if database_ready else 503
 
 
+@api_blueprint.get("/movies/search")
 @api_blueprint.get("/tmdb/movies/search")
-def search_tmdb_movies():
+def search_movies():
     query = request.args.get("query", "").strip()
     page = request.args.get("page", default=1, type=int)
 
@@ -49,29 +43,20 @@ def search_tmdb_movies():
     if page is None or page < 1 or page > 500:
         return jsonify({"message": "page는 1부터 500 사이여야 합니다."}), 400
 
-    try:
-        result = get_tmdb_client().search_movies(query, page)
-    except TMDBError as exc:
-        return jsonify({"message": exc.message}), exc.status_code
+    result = list_catalog_movies(page=page, query=query)
 
     return jsonify({
-        "page": result.get("page", page),
-        "total_pages": result.get("total_pages", 0),
-        "total_results": result.get("total_results", 0),
-        "movies": [
-            normalize_search_movie(movie)
-            for movie in result.get("results", [])
-        ],
+        "page": result.page,
+        "total_pages": result.total_pages,
+        "total_results": result.total_results,
+        "movies": result.movies,
     })
 
 
+@api_blueprint.get("/movies/<int:tmdb_id>")
 @api_blueprint.get("/tmdb/movies/<int:tmdb_id>")
-def get_tmdb_movie(tmdb_id: int):
-    tmdb = get_tmdb_client()
-    try:
-        movie = tmdb.get_movie(tmdb_id)
-        providers = tmdb.get_watch_providers(tmdb_id)
-    except TMDBError as exc:
-        return jsonify({"message": exc.message}), exc.status_code
-
-    return jsonify(normalize_movie_detail(movie, providers))
+def get_movie(tmdb_id: int):
+    movie = get_catalog_movie(tmdb_id)
+    if movie is None:
+        return jsonify({"message": "동기화된 영화 정보를 찾을 수 없습니다."}), 404
+    return jsonify(movie)
