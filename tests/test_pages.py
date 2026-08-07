@@ -57,8 +57,12 @@ class PageTests(unittest.TestCase):
 
         self.list_patcher = patch("app.routes.pages.list_catalog_movies")
         self.detail_patcher = patch("app.routes.pages.get_catalog_movie_record")
+        self.ranked_patcher = patch("app.routes.pages.list_ranked_movies")
+        self.ott_rankings_patcher = patch("app.routes.pages.list_ott_rankings")
         self.list_catalog_movies = self.list_patcher.start()
         self.get_catalog_movie_record = self.detail_patcher.start()
+        self.list_ranked_movies = self.ranked_patcher.start()
+        self.list_ott_rankings = self.ott_rankings_patcher.start()
 
         self.list_catalog_movies.return_value = MoviePage(
             movies=POPULAR_MOVIES,
@@ -70,21 +74,34 @@ class PageTests(unittest.TestCase):
             movie=SimpleNamespace(id=UUID("00000000-0000-0000-0000-000000000010")),
             payload=DETAIL_PAYLOAD,
         )
+        self.list_ranked_movies.return_value = POPULAR_MOVIES
+        self.list_ott_rankings.return_value = [{
+            "provider": SimpleNamespace(id=1, code="NETFLIX", name="넷플릭스"),
+            "movies": [POPULAR_MOVIES[0]],
+        }]
 
     def tearDown(self):
         self.list_patcher.stop()
         self.detail_patcher.stop()
+        self.ranked_patcher.stop()
+        self.ott_rankings_patcher.stop()
 
-    def test_root_renders_movies_from_database_catalog(self):
+    def test_root_renders_three_database_ranking_cards(self):
         response = self.client.get("/")
         html = response.get_data(as_text=True)
 
         self.assertEqual(response.status_code, 200)
-        self.list_catalog_movies.assert_called_once_with(page=1, query="")
+        self.list_catalog_movies.assert_not_called()
+        self.list_ranked_movies.assert_called_once_with(limit=3)
+        self.assertIn('role="tablist"', html)
+        self.assertIn('data-ranking-tab="all"', html)
+        self.assertIn('data-ranking-tab="subscriptions"', html)
+        self.assertIn('data-ranking-tab="provider-1"', html)
+        self.assertIn("내 구독 OTT", html)
+        self.assertIn("넷플릭스", html)
+        self.assertIn("맞춤 랭킹", html)
         self.assertIn("인기 영화", html)
         self.assertIn("/movies/10", html)
-        self.assertIn("2026", html)
-        self.assertIn("포스터 없음", html)
 
     def test_search_uses_database_query_and_preserves_pagination(self):
         self.list_catalog_movies.return_value = MoviePage(

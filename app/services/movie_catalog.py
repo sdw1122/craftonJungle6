@@ -149,6 +149,7 @@ class MovieCatalogSyncService:
                 movie.runtime_minutes = payload.get("runtime_minutes") or None
                 movie.original_language = payload.get("original_language") or None
                 movie.poster_url = payload.get("poster_url")
+                movie.backdrop_url = payload.get("backdrop_url")
                 movie.popular_rank = rank
                 movie.updated_at = now
 

@@ -47,6 +47,9 @@ def upgrade_movie_catalog_schema() -> None:
             "CHECK (popular_rank IS NULL OR popular_rank > 0)"
         ))
         db.session.execute(db.text(
+            "ALTER TABLE movies ADD COLUMN IF NOT EXISTS backdrop_url TEXT"
+        ))
+        db.session.execute(db.text(
             "CREATE INDEX IF NOT EXISTS idx_movies_popular_rank "
             "ON movies (popular_rank) WHERE popular_rank IS NOT NULL"
         ))

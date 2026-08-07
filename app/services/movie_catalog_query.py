@@ -6,13 +6,19 @@ from math import ceil
 from sqlalchemy import exists, or_
 from sqlalchemy.orm import selectinload
 
+from ..extensions import db
 from ..models import (
     Movie,
     MovieCredit,
     MovieGenre,
+    MovieReview,
     MovieTitle,
     OTTAvailability,
+    OTTProvider,
     Person,
+    UserFavoriteGenre,
+    UserMovieLibrary,
+    UserOTTSubscription,
 )
 
 
@@ -53,7 +59,173 @@ def serialize_movie_summary(movie: Movie) -> dict:
         "overview": movie.overview,
         "release_date": movie.release_date.isoformat() if movie.release_date else None,
         "poster_url": movie.poster_url,
+        "backdrop_url": movie.backdrop_url,
     }
+
+
+def _serialize_ranked_movies(movies: list[Movie]) -> list[dict]:
+    if not movies:
+        return []
+
+    movie_ids = [movie.id for movie in movies]
+    provider_rows = (
+        db.session.query(OTTAvailability.movie_id, OTTProvider)
+        .join(OTTProvider, OTTProvider.id == OTTAvailability.provider_id)
+        .filter(
+            OTTAvailability.movie_id.in_(movie_ids),
+            OTTAvailability.region_code == "KR",
+            OTTProvider.is_active.is_(True),
+        )
+        .order_by(OTTProvider.id)
+        .all()
+    )
+    providers_by_movie: dict = {}
+    seen: dict = {}
+    for movie_id, provider in provider_rows:
+        movie_seen = seen.setdefault(movie_id, set())
+        if provider.id in movie_seen:
+            continue
+        movie_seen.add(provider.id)
+        providers_by_movie.setdefault(movie_id, []).append({
+            "id": provider.id,
+            "code": provider.code,
+            "name": provider.name,
+        })
+
+    results = []
+    for movie in movies:
+        payload = serialize_movie_summary(movie)
+        payload["popular_rank"] = movie.popular_rank
+        payload["providers"] = providers_by_movie.get(movie.id, [])
+        results.append(payload)
+    return results
+
+
+def list_ranked_movies(*, limit: int = 3, provider_ids: list[int] | None = None) -> list[dict]:
+    query = Movie.query.filter(
+        Movie.tmdb_id.isnot(None),
+        Movie.popular_rank.isnot(None),
+    )
+    if provider_ids:
+        available_movie_ids = (
+            db.select(OTTAvailability.movie_id)
+            .where(
+                OTTAvailability.provider_id.in_(provider_ids),
+                OTTAvailability.region_code == "KR",
+            )
+        )
+        query = query.filter(Movie.id.in_(available_movie_ids))
+
+    movies = (
+        query
+        .options(selectinload(Movie.titles))
+        .order_by(Movie.popular_rank, Movie.tmdb_id)
+        .limit(limit)
+        .all()
+    )
+    return _serialize_ranked_movies(movies)
+
+
+def active_subscription_provider_ids(user_id) -> list[int]:
+    return [
+        subscription.provider_id
+        for subscription in (
+            UserOTTSubscription.query
+            .filter_by(user_id=user_id, ended_at=None)
+            .order_by(UserOTTSubscription.provider_id)
+            .all()
+        )
+    ]
+
+
+def list_personalized_movies(*, user_id, limit: int = 3) -> list[dict]:
+    candidates = (
+        Movie.query
+        .filter(
+            Movie.tmdb_id.isnot(None),
+            Movie.popular_rank.isnot(None),
+        )
+        .options(selectinload(Movie.titles))
+        .order_by(Movie.popular_rank, Movie.tmdb_id)
+        .limit(150)
+        .all()
+    )
+    if not candidates:
+        return []
+
+    movie_ids = [movie.id for movie in candidates]
+    favorite_rows = (
+        UserFavoriteGenre.query
+        .filter_by(user_id=user_id)
+        .order_by(UserFavoriteGenre.priority)
+        .all()
+    )
+    genre_weights = {
+        favorite.genre_id: 4 - favorite.priority
+        for favorite in favorite_rows
+    }
+    genre_rows = (
+        MovieGenre.query
+        .filter(MovieGenre.movie_id.in_(movie_ids))
+        .all()
+    )
+    score_by_movie: dict = {}
+    for genre_link in genre_rows:
+        score_by_movie[genre_link.movie_id] = (
+            score_by_movie.get(genre_link.movie_id, 0)
+            + genre_weights.get(genre_link.genre_id, 0)
+        )
+
+    watched_ids = {
+        entry.movie_id
+        for entry in (
+            UserMovieLibrary.query
+            .filter(
+                UserMovieLibrary.user_id == user_id,
+                UserMovieLibrary.watch_status == "WATCHED",
+                UserMovieLibrary.movie_id.in_(movie_ids),
+            )
+            .all()
+        )
+    }
+    reviewed_ids = {
+        review.movie_id
+        for review in (
+            MovieReview.query
+            .filter(
+                MovieReview.user_id == user_id,
+                MovieReview.deleted_at.is_(None),
+                MovieReview.movie_id.in_(movie_ids),
+            )
+            .all()
+        )
+    }
+    unseen = [
+        movie for movie in candidates
+        if movie.id not in watched_ids and movie.id not in reviewed_ids
+    ]
+    unseen.sort(key=lambda movie: (
+        -score_by_movie.get(movie.id, 0),
+        movie.popular_rank or 9999,
+        movie.tmdb_id,
+    ))
+    return _serialize_ranked_movies(unseen[:limit])
+
+
+def list_ott_rankings(*, limit: int = 3) -> list[dict]:
+    providers = (
+        OTTProvider.query
+        .filter_by(is_active=True)
+        .order_by(OTTProvider.id)
+        .all()
+    )
+    return [
+        {
+            "provider": provider,
+            "movies": list_ranked_movies(limit=limit, provider_ids=[provider.id]),
+        }
+        for provider in providers
+    ]
 
 
 def list_catalog_movies(*, page: int = 1, query: str = "") -> MoviePage:
