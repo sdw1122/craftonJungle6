@@ -23,7 +23,7 @@ def index():
 
     if page is None or page < 1 or page > 500:
         return render_template(
-            "movies/index.html",
+            "index.html",
             movies=[],
             query=query,
             page=1,
@@ -41,18 +41,18 @@ def index():
             subscription_provider_ids = active_subscription_provider_ids(user_id)
             personalized_movies = list_personalized_movies(user_id=user_id, limit=3)
 
-        all_movies = list_ranked_movies(limit=3)
+        all_movies = list_ranked_movies(limit=12)
         subscription_movies = (
-            list_ranked_movies(limit=3, provider_ids=subscription_provider_ids)
+            list_ranked_movies(limit=12, provider_ids=subscription_provider_ids)
             if subscription_provider_ids
             else []
         )
-        ott_rankings = list_ott_rankings(limit=3)
+        ott_rankings = list_ott_rankings(limit=12)
         ranking_tabs = [
             {
                 "key": "all",
                 "label": "전체",
-                "title": "전체 OTT TOP 3",
+                "title": "전체 OTT TOP 12",
                 "description": "모든 OTT의 동기화된 인기 순위를 합산한 결과예요.",
                 "movies": all_movies,
                 "empty_message": "동기화된 인기 영화가 없습니다. 먼저 영화 동기화를 실행해주세요.",
@@ -63,7 +63,7 @@ def index():
             {
                 "key": "subscriptions",
                 "label": "내 구독 OTT",
-                "title": "내 구독 OTT TOP 3",
+                "title": "내 구독 OTT TOP 12",
                 "description": "내가 구독 중인 서비스에서 볼 수 있는 인기 작품이에요.",
                 "movies": subscription_movies,
                 "empty_message": "구독 중인 OTT에서 제공하는 영화가 아직 없습니다.",
@@ -77,7 +77,7 @@ def index():
             ranking_tabs.append({
                 "key": f"provider-{provider.id}",
                 "label": provider.name,
-                "title": f"{provider.name} TOP 3",
+                "title": f"{provider.name} TOP 12",
                 "description": f"{provider.name}에서 볼 수 있는 인기 작품이에요.",
                 "movies": ranking["movies"],
                 "empty_message": f"{provider.name} 제공 정보가 있는 영화가 아직 없습니다.",
@@ -87,7 +87,7 @@ def index():
             })
 
         return render_template(
-            "movies/index.html",
+            "index.html",
             home_mode=True,
             query="",
             ranking_tabs=ranking_tabs,
@@ -99,7 +99,7 @@ def index():
     result = list_catalog_movies(page=page, query=query)
 
     return render_template(
-        "movies/index.html",
+        "index.html",
         home_mode=False,
         movies=result.movies,
         query=query,

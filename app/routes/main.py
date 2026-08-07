@@ -18,7 +18,7 @@ def database_is_ready() -> bool:
 
 @main_bp.route("/status")
 def index():
-    return render_template("index.html", database_ready=database_is_ready())
+    return render_template("movies/index.html", database_ready=database_is_ready())
 
 
 @main_bp.route("/hello/<name>")

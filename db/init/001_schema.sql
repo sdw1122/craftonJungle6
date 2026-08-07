@@ -362,7 +362,6 @@ VALUES
     ('TVING', '티빙'),
     ('WAVVE', '웨이브'),
     ('DISNEY_PLUS', '디즈니+'),
-    ('COUPANG_PLAY', '쿠팡플레이'),
     ('WATCHA', '왓챠'),
     ('APPLE_TV_PLUS', 'Apple TV+')
 ON CONFLICT (code) DO NOTHING;

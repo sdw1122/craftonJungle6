@@ -349,9 +349,9 @@ class RecommendationHomeTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             ranked.call_args_list,
-            [call(limit=3), call(limit=3, provider_ids=[1, 2])],
+            [call(limit=12), call(limit=12, provider_ids=[1, 2])],
         )
-        self.assertIn("내 구독 OTT TOP 3", response.get_data(as_text=True))
+        self.assertIn("내 구독 OTT TOP 12", response.get_data(as_text=True))
 
 
 if __name__ == "__main__":

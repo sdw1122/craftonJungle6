@@ -86,13 +86,14 @@ class PageTests(unittest.TestCase):
         self.ranked_patcher.stop()
         self.ott_rankings_patcher.stop()
 
-    def test_root_renders_three_database_ranking_cards(self):
+    def test_root_renders_database_ranking_carousel(self):
         response = self.client.get("/")
         html = response.get_data(as_text=True)
 
         self.assertEqual(response.status_code, 200)
         self.list_catalog_movies.assert_not_called()
-        self.list_ranked_movies.assert_called_once_with(limit=3)
+        self.list_ranked_movies.assert_called_once_with(limit=12)
+        self.list_ott_rankings.assert_called_once_with(limit=12)
         self.assertIn('role="tablist"', html)
         self.assertIn('data-ranking-tab="all"', html)
         self.assertIn('data-ranking-tab="subscriptions"', html)
@@ -102,6 +103,35 @@ class PageTests(unittest.TestCase):
         self.assertIn("맞춤 랭킹", html)
         self.assertIn("인기 영화", html)
         self.assertIn("/movies/10", html)
+
+    def test_root_ranking_carousel_pages_twelve_movies_by_three(self):
+        self.list_ott_rankings.return_value = []
+        self.list_ranked_movies.return_value = [
+            {
+                **POPULAR_MOVIES[0],
+                "tmdb_id": 100 + index,
+                "title": f"인기 영화 {index + 1}",
+            }
+            for index in range(12)
+        ]
+
+        response = self.client.get("/")
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("전체 OTT TOP 12", html)
+        self.assertIn("data-ranking-carousel-next", html)
+        self.assertIn("data-ranking-carousel-prev", html)
+        self.assertIn("1–3 / 12", html)
+        self.assertNotIn(
+            'data-ranking-carousel-prev aria-label="이전 순위 3개 보기" disabled',
+            html,
+        )
+        self.assertIn("currentPage = (page + pageCount) % pageCount;", html)
+        self.assertEqual(
+            html.count('<article class="ranking-card" data-ranking-carousel-item'),
+            12,
+        )
 
     def test_search_uses_database_query_and_preserves_pagination(self):
         self.list_catalog_movies.return_value = MoviePage(
