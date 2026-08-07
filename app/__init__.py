@@ -68,6 +68,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     from .routes.recommendations import recommendations_bp
     from .routes.search import search_bp
     from .routes.wishlist import wishlist_bp
+    from .routes.settings import settings_bp
+
+  
     from .cli import sync_popular_movies, upgrade_movie_catalog_schema
 
     project_root = Path(__file__).resolve().parent.parent
@@ -90,6 +93,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     app.register_blueprint(reviews_bp)
     app.register_blueprint(recommendations_bp)
     app.register_blueprint(search_bp)
+    app.register_blueprint(settings_bp)
 
     @app.context_processor
     def inject_header_data():
