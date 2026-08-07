@@ -8,6 +8,32 @@
     <p class="description">서비스 이용 중 불편한 점이나 궁금한 점이 있다면 언제든 남겨주세요.</p>
     
     <form style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">
+        <fieldset style="border: 0; padding: 0; margin: 0;">
+            <legend style="margin-bottom: 12px; font-weight: 600;">문의 유형</legend>
+
+            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+                <label style="display: flex; align-items: center; gap: 8px; padding: 12px; border: 1px solid #333; border-radius: 8px; cursor: pointer;">
+                    <input type="radio" name="category" value="CONTENT">
+                    <span>콘텐츠 정보 문의</span>
+                </label>
+
+                <label style="display: flex; align-items: center; gap: 8px; padding: 12px; border: 1px solid #333; border-radius: 8px; cursor: pointer;">
+                    <input type="radio" name="category" value="ACCOUNT">
+                    <span>회원 정보 문의</span>
+                </label>
+
+                <label style="display: flex; align-items: center; gap: 8px; padding: 12px; border: 1px solid #333; border-radius: 8px; cursor: pointer;">
+                    <input type="radio" name="category" value="SERVICE">
+                    <span>서비스 이용 문의</span>
+                </label>
+
+                <label style="display: flex; align-items: center; gap: 8px; padding: 12px; border: 1px solid #333; border-radius: 8px; cursor: pointer;">
+                    <input type="radio" name="category" value="OTHER">
+                    <span>기타 문의</span>
+                </label>
+            </div>
+        </fieldset>
+
         <label for="subject">제목</label>
         <input type="text" id="subject" name="subject" placeholder="문의 제목을 입력해주세요" style="padding: 10px;">
         
