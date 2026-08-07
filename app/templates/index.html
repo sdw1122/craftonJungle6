@@ -233,7 +233,24 @@
       {% endif %}
     </section>
 
-    <p class="ranking-source">영화 및 OTT 제공 정보: TMDB · JustWatch 데이터 동기화 기준</p>
+    <section class="ranking-section ranking-section-random" aria-labelledby="random-content-title">
+      <div class="ranking-section-header">
+        <div>
+          <p class="ranking-section-eyebrow ranking-section-eyebrow-random">RANDOM PICK</p>
+          <h2 id="random-content-title">랜덤 영화</h2>
+          <p>새로운 영화를 발견할 수 있도록 무작위로 골라봤어요.</p>
+        </div>
+      </div>
+
+      {{ ranking_grid(
+        random_movies,
+        '랜덤으로 보여드릴 영화가 아직 없어요. 먼저 영화를 동기화해주세요.',
+        true,
+        false,
+        '랜덤 영화 목록'
+      ) }}
+    </section>
+
 {% endblock %}
 
 {% block scripts %}

@@ -58,6 +58,7 @@ class PageTests(unittest.TestCase):
         self.list_patcher = patch("app.routes.search.list_catalog_movies")
         self.detail_patcher = patch("app.routes.pages.get_catalog_movie_record")
         self.ranked_patcher = patch("app.routes.pages.list_ranked_movies")
+        self.random_patcher = patch("app.routes.pages.list_random_movies")
         self.search_ranked_patcher = patch("app.routes.search.list_ranked_movies")
         self.ott_rankings_patcher = patch("app.routes.pages.list_ott_rankings")
         self.providers_patcher = patch("app.routes.pages.list_active_ott_providers")
@@ -69,6 +70,7 @@ class PageTests(unittest.TestCase):
         self.list_catalog_movies = self.list_patcher.start()
         self.get_catalog_movie_record = self.detail_patcher.start()
         self.list_ranked_movies = self.ranked_patcher.start()
+        self.list_random_movies = self.random_patcher.start()
         self.search_list_ranked_movies = self.search_ranked_patcher.start()
         self.list_ott_rankings = self.ott_rankings_patcher.start()
         self.list_active_ott_providers = self.providers_patcher.start()
@@ -87,6 +89,7 @@ class PageTests(unittest.TestCase):
             payload=DETAIL_PAYLOAD,
         )
         self.list_ranked_movies.return_value = POPULAR_MOVIES
+        self.list_random_movies.return_value = POPULAR_MOVIES
         self.search_list_ranked_movies.return_value = POPULAR_MOVIES
         self.list_ott_rankings.return_value = [{
             "provider": SimpleNamespace(id=1, code="NETFLIX", name="넷플릭스"),
@@ -104,6 +107,7 @@ class PageTests(unittest.TestCase):
         self.list_patcher.stop()
         self.detail_patcher.stop()
         self.ranked_patcher.stop()
+        self.random_patcher.stop()
         self.search_ranked_patcher.stop()
         self.ott_rankings_patcher.stop()
         self.providers_patcher.stop()
@@ -118,6 +122,7 @@ class PageTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.list_catalog_movies.assert_not_called()
         self.list_ranked_movies.assert_called_once_with(limit=12)
+        self.list_random_movies.assert_called_once_with(limit=50)
         self.list_ott_rankings.assert_called_once_with(limit=12)
         self.assertIn('role="tablist"', html)
         self.assertIn('data-ranking-tab="all"', html)
@@ -127,6 +132,10 @@ class PageTests(unittest.TestCase):
         self.assertIn("넷플릭스", html)
         self.assertIn("맞춤 랭킹", html)
         self.assertIn("내가 찜한 콘텐츠", html)
+        self.assertIn("랜덤 영화", html)
+        self.assertLess(html.index("내가 찜한 콘텐츠"), html.index("랜덤 영화"))
+        self.assertIn('class="site-footer"', html)
+        self.assertIn("TMDB · JustWatch 데이터 동기화 기준", html)
         self.assertIn("로그인하고 찜한 콘텐츠를 모아보세요", html)
         self.list_wishlisted_movies.assert_not_called()
         self.wishlisted_tmdb_ids.assert_not_called()

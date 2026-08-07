@@ -9,6 +9,7 @@ from ..services.movie_catalog_query import (
     list_active_ott_providers,
     list_ott_rankings,
     list_personalized_movies,
+    list_random_movies,
     list_ranked_movies,
     list_wishlisted_movies,
     wishlisted_tmdb_ids,
@@ -39,6 +40,7 @@ def index():
             wishlisted_movie_ids = wishlisted_tmdb_ids(user_id=user_id)
 
         all_movies = list_ranked_movies(limit=12)
+        random_movies = list_random_movies(limit=50)
         subscription_movies = (
             list_ranked_movies(limit=12, provider_ids=subscription_provider_ids)
             if subscription_provider_ids
@@ -87,6 +89,7 @@ def index():
             "index.html",
             ranking_tabs=ranking_tabs,
             personalized_movies=personalized_movies,
+            random_movies=random_movies,
             wishlisted_movies=wishlisted_movies,
             wishlisted_movie_ids=wishlisted_movie_ids,
             ott_icons=OTT_ICONS,

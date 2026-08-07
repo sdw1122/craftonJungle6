@@ -126,6 +126,18 @@ def list_ranked_movies(*, limit: int = 3, provider_ids: list[int] | None = None)
     return _serialize_ranked_movies(movies)
 
 
+def list_random_movies(*, limit: int = 50) -> list[dict]:
+    movies = (
+        Movie.query
+        .filter(Movie.tmdb_id.isnot(None))
+        .options(selectinload(Movie.titles))
+        .order_by(db.func.random())
+        .limit(limit)
+        .all()
+    )
+    return _serialize_ranked_movies(movies)
+
+
 def active_subscription_provider_ids(user_id) -> list[int]:
     return [
         subscription.provider_id

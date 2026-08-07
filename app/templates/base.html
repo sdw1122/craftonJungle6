@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}키노라이츠 클론{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=18">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=19">
   </head>
   <body class="{% block body_class %}{% endblock %}">
     <header class="site-header">
@@ -157,6 +157,30 @@
     <main class="container{% block main_class %}{% endblock %}">
       {% block content %}{% endblock %}
     </main>
+
+    <footer class="site-footer">
+      <div class="site-footer-inner">
+        <div class="site-footer-brand">
+          <a href="{{ url_for('pages.index') }}" aria-label="Junglelights 홈">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Junglelights">
+          </a>
+          <p>취향에 맞는 영화와 새로운 발견을 한곳에서 만나보세요.</p>
+        </div>
+
+        <nav class="site-footer-links" aria-label="하단 메뉴">
+          <a href="{{ url_for('pages.index') }}">홈</a>
+          <a href="{{ url_for('pages.rankings') }}">랭킹</a>
+          <a href="{{ url_for('search.search_page') }}">검색</a>
+          <a href="{{ url_for('pages.contact') }}">문의하기</a>
+        </nav>
+
+        <div class="site-footer-meta">
+          <p>영화 및 OTT 제공 정보: TMDB · JustWatch 데이터 동기화 기준</p>
+          <p>© Junglelights. All rights reserved.</p>
+        </div>
+      </div>
+    </footer>
+
     {% block scripts %}{% endblock %}
 
     <script>

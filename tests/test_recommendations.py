@@ -343,6 +343,7 @@ class RecommendationHomeTests(unittest.TestCase):
         with (
             patch("app.routes.pages.active_subscription_provider_ids", return_value=[]),
             patch("app.routes.pages.list_ranked_movies", return_value=[]),
+            patch("app.routes.pages.list_random_movies", return_value=[]),
             patch("app.routes.pages.list_personalized_movies", return_value=[]),
             patch(
                 "app.routes.pages.list_wishlisted_movies",
@@ -397,6 +398,7 @@ class RecommendationHomeTests(unittest.TestCase):
         with (
             patch("app.routes.pages.active_subscription_provider_ids", return_value=[1, 2]),
             patch("app.routes.pages.list_ranked_movies", return_value=[]) as ranked,
+            patch("app.routes.pages.list_random_movies", return_value=[]),
             patch("app.routes.pages.list_personalized_movies", return_value=[]),
             patch("app.routes.pages.list_wishlisted_movies", return_value=[]),
             patch("app.routes.pages.wishlisted_tmdb_ids", return_value=set()),

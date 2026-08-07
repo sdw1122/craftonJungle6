@@ -263,6 +263,70 @@ body.dark-page .container {
   padding: 0;
 }
 
+.site-footer {
+  padding: 42px 32px 34px;
+  border-top: 1px solid #242428;
+  color: #8c8c95;
+  background: #09090b;
+}
+
+.site-footer-inner {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 30px 48px;
+  width: min(100%, 1180px);
+  margin: 0 auto;
+}
+
+.site-footer-brand img {
+  display: block;
+  width: auto;
+  height: 36px;
+}
+
+.site-footer-brand p,
+.site-footer-meta p {
+  margin: 12px 0 0;
+  line-height: 1.65;
+}
+
+.site-footer-brand p {
+  max-width: 420px;
+  font-size: 14px;
+}
+
+.site-footer-links {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  padding-top: 9px;
+}
+
+.site-footer-links a {
+  color: #d4d4d8;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.site-footer-links a:hover {
+  color: var(--accent);
+}
+
+.site-footer-meta {
+  display: flex;
+  grid-column: 1 / -1;
+  justify-content: space-between;
+  gap: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #202024;
+  font-size: 12px;
+}
+
+.site-footer-meta p {
+  margin: 0;
+}
+
 .container.catalog-container {
   display: block;
   width: min(100%, 1240px);
@@ -3067,8 +3131,17 @@ body.rankings-page .container.rankings-container {
   border-top: 1px solid #252529;
 }
 
+.ranking-section-random {
+  padding-top: 32px;
+  border-top: 1px solid #252529;
+}
+
 .ranking-section-eyebrow-wishlist {
   color: #ff6f9e;
+}
+
+.ranking-section-eyebrow-random {
+  color: #69d7ff;
 }
 
 .ranking-card-unranked .ranking-card-copy {
@@ -3338,6 +3411,29 @@ body.rankings-page .container.rankings-container {
 }
 
 @media (max-width: 700px) {
+  .site-footer {
+    padding: 34px 20px 28px;
+  }
+
+  .site-footer-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 26px;
+  }
+
+  .site-footer-links {
+    flex-wrap: wrap;
+    gap: 14px 24px;
+    padding-top: 0;
+  }
+
+  .site-footer-meta {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 22px;
+  }
+
   body.home-ranking-page .site-header {
     padding: 12px 14px;
   }
@@ -3468,7 +3564,8 @@ body.rankings-page .container.rankings-container {
     padding: 22px 16px;
   }
 
-  .ranking-section-wishlist {
+  .ranking-section-wishlist,
+  .ranking-section-random {
     padding-top: 24px;
   }
 
