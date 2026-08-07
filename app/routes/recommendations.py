@@ -1,5 +1,6 @@
 from flask import Blueprint, current_app, jsonify, request
 from flask_login import current_user, login_required
+from sqlalchemy.exc import SQLAlchemyError
 
 from ..services.recommendations import RecommendationUnavailable, get_recommendation_service
 
@@ -54,4 +55,12 @@ def generate_recommendations():
         )
     except RecommendationUnavailable as exc:
         return jsonify({"message": str(exc)}), 503
+    except SQLAlchemyError:
+        # RecommendationService rolls back persistence failures. This rollback also
+        # covers failures raised while loading the profile or catalog.
+        from ..extensions import db
+
+        db.session.rollback()
+        current_app.logger.exception("Failed to generate recommendations")
+        return jsonify({"message": "추천 결과를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요."}), 503
     return jsonify(payload)

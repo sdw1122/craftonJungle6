@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from flask_login import UserMixin
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB, UUID
@@ -50,7 +50,7 @@ class AuthAccount(db.Model):
 
     def set_password(self, password: str) -> None:
         self.password_hash = generate_password_hash(password)
-        self.password_changed_at = datetime.utcnow()
+        self.password_changed_at = datetime.now(timezone.utc)
 
     def check_password(self, password: str) -> bool:
         if not self.password_hash:

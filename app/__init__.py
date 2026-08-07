@@ -9,6 +9,7 @@ from sqlalchemy import URL
 from dotenv import load_dotenv
 
 from .extensions import db, login_manager, oauth
+from .errors import register_error_handlers
 from .ott_icons import DEFAULT_OTT_ICON, OTT_ICONS
 
 
@@ -94,6 +95,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     app.register_blueprint(recommendations_bp)
     app.register_blueprint(search_bp)
     app.register_blueprint(settings_bp)
+    register_error_handlers(app)
 
     @app.context_processor
     def inject_header_data():

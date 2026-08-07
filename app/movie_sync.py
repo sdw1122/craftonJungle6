@@ -1,4 +1,6 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
+
+from sqlalchemy.exc import SQLAlchemyError
 
 from .extensions import db
 from .models import Movie, OTTAvailability, OTTProvider
@@ -69,7 +71,7 @@ def sync_ott_availability(movie: Movie, watch_providers: list[dict]) -> None:
         ).first()
 
         if existing is not None:
-            existing.last_checked_at = datetime.utcnow()
+            existing.last_checked_at = datetime.now(timezone.utc)
         else:
             db.session.add(OTTAvailability(
                 movie_id=movie.id,
@@ -79,4 +81,8 @@ def sync_ott_availability(movie: Movie, watch_providers: list[dict]) -> None:
                 available_from=today,
             ))
 
-    db.session.commit()
+    try:
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        raise

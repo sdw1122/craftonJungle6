@@ -31,6 +31,10 @@
       </form>
     </div>
 
+    {% if not searched and not error_message %}
+      <h2>전체 인기 작품</h2>
+    {% endif %}
+
     {% if error_message %}
       <div class="ranking-empty search-empty" role="alert">
         <span aria-hidden="true">!</span>

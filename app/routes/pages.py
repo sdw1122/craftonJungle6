@@ -1,6 +1,6 @@
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, url_for, redirect
 from flask_login import current_user, login_required
-from flask import Blueprint, redirect, render_template, request, url_for
+
 
 from ..models import MovieReview, UserMovieLibrary
 from ..ott_icons import DEFAULT_OTT_ICON, OTT_ICONS
