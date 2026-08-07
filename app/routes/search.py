@@ -1,42 +1,61 @@
-# app/routes/search.py
-from flask import Blueprint, jsonify, render_template, request
-from sqlalchemy import text
-from ..extensions import db  # 팀원이 만든 공통 db 객체 불러오기
+from flask import Blueprint, render_template, request
+from flask_login import current_user
 
-# 블루프린트 생성
-search_bp = Blueprint('search', __name__)
+from ..services.movie_catalog_query import (
+    list_catalog_movies,
+    list_ranked_movies,
+    wishlisted_tmdb_ids,
+)
 
-@search_bp.get('/search')
+
+search_bp = Blueprint("search", __name__)
+
+
+@search_bp.get("/search")
 def search_page():
-    return render_template('search.html')
+    query = request.args.get("query", "").strip()
+    page = request.args.get("page", default=1, type=int)
 
-@search_bp.get('/api/search')
-def search_movies():
-    query_param = request.args.get('query', '').strip()
-    if not query_param:
-        return jsonify({"status": "success", "data": []})
+    if page is None or page < 1 or page > 500:
+        return render_template(
+            "search.html",
+            movies=[],
+            query=query,
+            page=1,
+            total_pages=0,
+            total_results=0,
+            searched=bool(query),
+            wishlisted_movie_ids=set(),
+            error_message="page는 1부터 500 사이여야 합니다.",
+        ), 400
 
-    try:
-        sql = text("""
-            SELECT DISTINCT m.id, mt.title, m.poster_url, m.overview
-            FROM movies m
-            JOIN movie_titles mt ON m.id = mt.movie_id
-            WHERE mt.title ILIKE :search_term
-               OR m.original_title ILIKE :search_term
-            LIMIT 20
-        """)
-        result = db.session.execute(sql, {"search_term": f"%{query_param}%"})
-        
-        movies = []
-        for row in result:
-            movies.append({
-                "id": str(row.id),
-                "title": row.title,
-                "poster_url": row.poster_url,
-                "overview": row.overview
-            })
-            
-        return jsonify({"status": "success", "data": movies})
-    except Exception as e:
-        print(f"Search Error: {e}")
-        return jsonify({"status": "error", "message": "검색 중 오류 발생"}), 500
+    wishlisted_movie_ids = set()
+    if current_user.is_authenticated:
+        user_id = getattr(current_user, "id", None) or current_user.get_id()
+        wishlisted_movie_ids = wishlisted_tmdb_ids(user_id=user_id)
+
+    if not query:
+        return render_template(
+            "search.html",
+            movies=list_ranked_movies(limit=50),
+            query="",
+            page=1,
+            total_pages=0,
+            total_results=0,
+            searched=False,
+            wishlisted_movie_ids=wishlisted_movie_ids,
+            error_message=None,
+        )
+
+    result = list_catalog_movies(page=page, query=query)
+    return render_template(
+        "search.html",
+        movies=result.movies,
+        query=query,
+        page=result.page,
+        total_pages=result.total_pages,
+        total_results=result.total_results,
+        searched=True,
+        wishlisted_movie_ids=wishlisted_movie_ids,
+        error_message=None,
+    )

@@ -16,11 +16,10 @@ class AppTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertEqual(self.client.get(path).status_code, 200)
 
-    def test_search_api_has_the_expected_url(self):
+    def test_obsolete_search_api_is_removed(self):
         response = self.client.get("/api/search")
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.get_json(), {"status": "success", "data": []})
+        self.assertEqual(response.status_code, 404)
 
     def test_movie_api_uses_the_database_catalog(self):
         page = MoviePage(

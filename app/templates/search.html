@@ -1,79 +1,110 @@
 {% extends "base.html" %}
 
-{% block title %}영화 검색 - 키노라이츠{% endblock %}
+{% block title %}{{ ('“' ~ query ~ '” 검색') if query else '영화 검색' }} | Junglelights{% endblock %}
+{% block body_class %}dark-page home-ranking-page{% endblock %}
+{% block main_class %} home-ranking-container{% endblock %}
 
 {% block content %}
-<section class="search-hero">
-  <h1>어떤 작품을 찾으시나요?</h1>
-
-  <div class="search-box">
-    <div class="search-input-wrap">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="11" cy="11" r="7"></circle>
-        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-      </svg>
-      <input type="text" id="searchInput" placeholder="작품, 인물을 검색해보세요">
+  <section class="catalog-search-page">
+    <a class="catalog-back-link" href="{{ url_for('pages.index') }}">← 랭킹 홈</a>
+    <div class="catalog-search-heading">
+      <div>
+        <p class="ranking-section-eyebrow">SEARCH</p>
+        <h1>검색</h1>
+      </div>
+      <form class="ranking-search" method="get" action="{{ url_for('search.search_page') }}">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <label class="sr-only" for="result-movie-query">영화, 배우 또는 감독 검색</label>
+        <input
+          id="result-movie-query"
+          name="query"
+          type="search"
+          value="{{ query }}"
+          placeholder="영화, 배우 또는 감독 검색"
+          required
+          autofocus
+        >
+        <button type="submit">검색</button>
+      </form>
     </div>
-    <button type="button" onclick="handleSearch()" class="button search-submit">검색</button>
-  </div>
-</section>
 
-<section class="search-results">
-  <div id="movieGrid" class="movie-grid"></div>
-</section>
+    {% if error_message %}
+      <div class="ranking-empty search-empty" role="alert">
+        <span aria-hidden="true">!</span>
+        <p>{{ error_message }}</p>
+      </div>
+    {% elif movies %}
+      <div class="catalog-result-grid">
+        {% for movie in movies %}
+          {% set movie_title = movie.title or movie.original_title or '제목 없음' %}
+          {% set movie_is_wishlisted = movie.tmdb_id in wishlisted_movie_ids %}
+          <article class="catalog-result-card-shell">
+            <div class="catalog-result-visual">
+              <a class="catalog-result-poster-link" href="{{ url_for('pages.movie_detail', tmdb_id=movie.tmdb_id) }}" aria-label="{{ movie_title }} 상세 보기">
+                {% if movie.poster_url %}
+                  <img src="{{ movie.poster_url }}" alt="{{ movie_title }} 포스터" loading="lazy">
+                {% else %}
+                  <span class="catalog-result-placeholder">포스터 없음</span>
+                {% endif %}
+              </a>
+              <button
+                type="button"
+                class="ranking-bookmark-button search-bookmark-button{{ ' active' if movie_is_wishlisted else '' }}"
+                data-wishlist-toggle
+                data-wishlist-url="{{ url_for('wishlist.upsert', tmdb_id=movie.tmdb_id) }}"
+                data-tmdb-id="{{ movie.tmdb_id }}"
+                data-movie-title="{{ movie_title }}"
+                data-authenticated="{{ 'true' if current_user.is_authenticated else 'false' }}"
+                aria-label="{{ '찜 해제' if movie_is_wishlisted else '찜하기' }}: {{ movie_title }}"
+                aria-pressed="{{ 'true' if movie_is_wishlisted else 'false' }}"
+                title="{{ '찜 해제' if movie_is_wishlisted else '찜하기' }}"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M6.5 4.5A1.5 1.5 0 0 1 8 3h8a1.5 1.5 0 0 1 1.5 1.5V21L12 17.4 6.5 21V4.5Z"></path>
+                </svg>
+              </button>
+            </div>
+            <a class="catalog-result-card-copy" href="{{ url_for('pages.movie_detail', tmdb_id=movie.tmdb_id) }}">
+              <strong>{{ movie_title }}</strong>
+              <span>{{ movie.release_date[:4] if movie.release_date else '공개일 미정' }}</span>
+            </a>
+          </article>
+        {% endfor %}
+      </div>
 
-<script>
-  document.getElementById('searchInput').addEventListener('keypress', function (e) {
-    if (e.key === 'Enter') handleSearch();
-  });
+      {% if searched %}
+        <nav class="dark-pagination" aria-label="검색 결과 페이지">
+          {% if page > 1 %}
+            <a href="{{ url_for('search.search_page', query=query, page=page - 1) }}">이전</a>
+          {% else %}
+            <span>이전</span>
+          {% endif %}
+          <strong>{{ page }} / {{ total_pages or 1 }}</strong>
+          {% if page < total_pages %}
+            <a href="{{ url_for('search.search_page', query=query, page=page + 1) }}">다음</a>
+          {% else %}
+            <span>다음</span>
+          {% endif %}
+        </nav>
+      {% endif %}
+    {% else %}
+      <div class="ranking-empty search-empty">
+        <span aria-hidden="true">🔎</span>
+        <p>
+          {% if searched %}
+            검색 결과가 없습니다. 다른 제목이나 인물 이름으로 검색해보세요.
+          {% else %}
+            현재 표시할 인기 작품이 없습니다.
+          {% endif %}
+        </p>
+      </div>
+    {% endif %}
+  </section>
+{% endblock %}
 
-  async function handleSearch() {
-    const query = document.getElementById('searchInput').value.trim();
-    const grid = document.getElementById('movieGrid');
-
-    if (!query) {
-      alert('검색어를 입력해 주세요!');
-      return;
-    }
-
-    grid.innerHTML = '<p class="search-status">검색 중...</p>';
-
-    try {
-      const response = await fetch(`/api/search?query=${encodeURIComponent(query)}`);
-      const result = await response.json();
-
-      if (result.status === 'success') {
-        renderMovies(result.data);
-      } else {
-        grid.innerHTML = `<p class="search-status">${result.message}</p>`;
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      grid.innerHTML = '<p class="search-status">서버 통신 중 오류가 발생했습니다.</p>';
-    }
-  }
-
-  function renderMovies(movies) {
-    const grid = document.getElementById('movieGrid');
-    grid.innerHTML = '';
-
-    if (movies.length === 0) {
-      grid.innerHTML = '<p class="search-status">검색 결과가 없습니다.</p>';
-      return;
-    }
-
-    movies.forEach(movie => {
-      const card = document.createElement('div');
-      card.className = 'movie-card';
-
-      const posterSrc = movie.poster_url || 'https://via.placeholder.com/160x230?text=No+Image';
-
-      card.innerHTML = `
-        <img class="movie-card-poster" src="${posterSrc}" alt="${movie.title}">
-        <h4 class="movie-card-title">${movie.title}</h4>
-      `;
-      grid.appendChild(card);
-    });
-  }
-</script>
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/wishlist-toggle.js') }}"></script>
 {% endblock %}

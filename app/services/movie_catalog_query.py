@@ -126,6 +126,18 @@ def list_ranked_movies(*, limit: int = 3, provider_ids: list[int] | None = None)
     return _serialize_ranked_movies(movies)
 
 
+def list_random_movies(*, limit: int = 50) -> list[dict]:
+    movies = (
+        Movie.query
+        .filter(Movie.tmdb_id.isnot(None))
+        .options(selectinload(Movie.titles))
+        .order_by(db.func.random())
+        .limit(limit)
+        .all()
+    )
+    return _serialize_ranked_movies(movies)
+
+
 def active_subscription_provider_ids(user_id) -> list[int]:
     return [
         subscription.provider_id
@@ -242,6 +254,20 @@ def list_wishlisted_movies(*, user_id, limit: int = 12) -> list[dict]:
     return _serialize_ranked_movies(movies)
 
 
+def wishlisted_tmdb_ids(*, user_id) -> set[int]:
+    rows = (
+        db.session.query(Movie.tmdb_id)
+        .join(UserMovieLibrary, UserMovieLibrary.movie_id == Movie.id)
+        .filter(
+            Movie.tmdb_id.isnot(None),
+            UserMovieLibrary.user_id == user_id,
+            UserMovieLibrary.is_wishlisted.is_(True),
+        )
+        .all()
+    )
+    return {tmdb_id for (tmdb_id,) in rows}
+
+
 def list_ott_rankings(*, limit: int = 3) -> list[dict]:
     providers = (
         OTTProvider.query
@@ -346,7 +372,9 @@ def get_catalog_movie_record(tmdb_id: int) -> MovieDetailRecord | None:
     watch_providers = [
         {
             "name": item.provider.name,
+            "code": item.provider.code,
             "offer_type": item.offer_type,
+            "content_url": item.content_url,
         }
         for item in availability
     ]

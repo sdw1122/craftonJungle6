@@ -299,6 +299,39 @@ class RecommendationRouteTests(unittest.TestCase):
 
 
 class RecommendationHomeTests(unittest.TestCase):
+    def test_logged_in_rankings_marks_wishlisted_movie(self):
+        app = create_app({"TESTING": True})
+        app.login_manager._user_callback = lambda _user_id: LoggedInUser()
+        client = app.test_client()
+        with client.session_transaction() as session:
+            session["_user_id"] = LoggedInUser.id
+            session["_fresh"] = True
+
+        movie = {
+            "tmdb_id": 77,
+            "title": "찜한 랭킹 영화",
+            "original_title": "Wishlisted Ranked Movie",
+            "overview": None,
+            "release_date": "2026-01-01",
+            "poster_url": "https://image.example/ranked.jpg",
+            "backdrop_url": None,
+            "popular_rank": 1,
+            "providers": [],
+        }
+        with (
+            patch("app.routes.pages.list_active_ott_providers", return_value=[]),
+            patch("app.routes.pages.list_ranked_movies", return_value=[movie]),
+            patch("app.routes.pages.wishlisted_tmdb_ids", return_value={77}) as wishlist_ids,
+        ):
+            response = client.get("/rankings")
+
+        html = response.get_data(as_text=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('data-tmdb-id="77"', html)
+        self.assertIn('aria-pressed="true"', html)
+        self.assertIn('src="/static/js/wishlist-toggle.js"', html)
+        wishlist_ids.assert_called_once_with(user_id=LoggedInUser.id)
+
     def test_logged_in_home_contains_personalized_ranking_section(self):
         app = create_app({"TESTING": True})
         app.login_manager._user_callback = lambda _user_id: LoggedInUser()
@@ -310,6 +343,7 @@ class RecommendationHomeTests(unittest.TestCase):
         with (
             patch("app.routes.pages.active_subscription_provider_ids", return_value=[]),
             patch("app.routes.pages.list_ranked_movies", return_value=[]),
+            patch("app.routes.pages.list_random_movies", return_value=[]),
             patch("app.routes.pages.list_personalized_movies", return_value=[]),
             patch(
                 "app.routes.pages.list_wishlisted_movies",
@@ -325,6 +359,7 @@ class RecommendationHomeTests(unittest.TestCase):
                     "providers": [],
                 }],
             ) as wishlisted,
+            patch("app.routes.pages.wishlisted_tmdb_ids", return_value={77}) as wishlist_ids,
             patch("app.routes.pages.list_ott_rankings", return_value=[]),
         ):
             response = client.get("/")
@@ -338,7 +373,10 @@ class RecommendationHomeTests(unittest.TestCase):
         self.assertIn("찜한 영화", html)
         self.assertIn('href="/wishlist/?status=wishlisted"', html)
         self.assertNotIn('<strong class="ranking-number">1</strong>', html)
+        self.assertIn('data-tmdb-id="77"', html)
+        self.assertIn('aria-pressed="true"', html)
         wishlisted.assert_called_once_with(user_id=LoggedInUser.id, limit=12)
+        wishlist_ids.assert_called_once_with(user_id=LoggedInUser.id)
 
     def test_home_recommendations_only_generate_after_button_click(self):
         script_path = Path(__file__).resolve().parents[1] / "app" / "static" / "js" / "recommendations.js"
@@ -360,8 +398,10 @@ class RecommendationHomeTests(unittest.TestCase):
         with (
             patch("app.routes.pages.active_subscription_provider_ids", return_value=[1, 2]),
             patch("app.routes.pages.list_ranked_movies", return_value=[]) as ranked,
+            patch("app.routes.pages.list_random_movies", return_value=[]),
             patch("app.routes.pages.list_personalized_movies", return_value=[]),
             patch("app.routes.pages.list_wishlisted_movies", return_value=[]),
+            patch("app.routes.pages.wishlisted_tmdb_ids", return_value=set()),
             patch("app.routes.pages.list_ott_rankings", return_value=[]),
         ):
             response = client.get("/")
