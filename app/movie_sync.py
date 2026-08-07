@@ -1,8 +1,7 @@
 from datetime import date, datetime
 
 from .extensions import db
-from .models import Movie, OTTAvailability, OTTProvider
-from .ott_icons import TMDB_PROVIDER_NAME_TO_CODE
+from .models import Movie
 
 
 def _parse_release_date(value: str | None) -> date | None:
@@ -41,42 +40,3 @@ def get_or_create_movie(
     db.session.add(movie)
     db.session.flush()
     return movie
-
-
-def sync_ott_availability(movie: Movie, watch_providers: list[dict]) -> None:
-    """영화 상세페이지에서 받아온 TMDB watch-provider 정보를 ott_availabilities에 반영한다.
-
-    우리가 아는 7개 OTT(ott_providers)에 매칭되는 것만 저장하고,
-    이미 저장된 조합은 last_checked_at만 갱신한다.
-    """
-    today = date.today()
-
-    for entry in watch_providers:
-        code = TMDB_PROVIDER_NAME_TO_CODE.get(entry.get("name"))
-        if code is None:
-            continue
-
-        provider = OTTProvider.query.filter_by(code=code).first()
-        if provider is None:
-            continue
-
-        offer_type = entry.get("offer_type")
-        existing = OTTAvailability.query.filter_by(
-            movie_id=movie.id,
-            provider_id=provider.id,
-            region_code="KR",
-            offer_type=offer_type,
-        ).first()
-
-        if existing is not None:
-            existing.last_checked_at = datetime.utcnow()
-        else:
-            db.session.add(OTTAvailability(
-                movie_id=movie.id,
-                provider_id=provider.id,
-                region_code="KR",
-                offer_type=offer_type,
-                available_from=today,
-            ))
-
-    db.session.commit()

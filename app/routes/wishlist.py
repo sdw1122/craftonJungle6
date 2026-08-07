@@ -4,9 +4,8 @@ from flask import Blueprint, abort, jsonify, redirect, render_template, request,
 from flask_login import current_user, login_required
 
 from ..extensions import db
-from ..models import Movie, OTTAvailability, OTTProvider, UserMovieLibrary, UserOTTSubscription
+from ..models import Movie, UserMovieLibrary
 from ..movie_sync import get_or_create_movie
-from ..ott_icons import DEFAULT_OTT_ICON, OTT_ICONS
 
 wishlist_bp = Blueprint("wishlist", __name__, url_prefix="/wishlist")
 
@@ -23,7 +22,6 @@ def library():
     status = request.args.get("status", "wishlisted")
     if status not in LIBRARY_TABS:
         abort(404)
-    ott_filter = request.args.get("ott", "all")
 
     query = UserMovieLibrary.query.filter_by(user_id=current_user.id)
     if status == "wishlisted":
@@ -32,28 +30,11 @@ def library():
         query = query.filter_by(watch_status=status.upper())
 
     entries = query.order_by(UserMovieLibrary.updated_at.desc()).all()
-    movie_ids = [e.movie_id for e in entries]
     movies_by_id = {
-        m.id: m for m in Movie.query.filter(Movie.id.in_(movie_ids)).all()
-    } if movie_ids else {}
-
-    if ott_filter != "all":
-        try:
-            ott_provider_id = int(ott_filter)
-        except ValueError:
-            abort(400)
-        available_ids = {
-            row.movie_id for row in OTTAvailability.query.filter(
-                OTTAvailability.movie_id.in_(movie_ids),
-                OTTAvailability.provider_id == ott_provider_id,
-            ).all()
-        }
-        movies_by_id = {mid: m for mid, m in movies_by_id.items() if mid in available_ids}
-
-    if status == "wishlisted":
-        remove_payload = {"is_wishlisted": "false"}
-    else:
-        remove_payload = {"watch_status": ""}
+        m.id: m for m in Movie.query.filter(
+            Movie.id.in_([e.movie_id for e in entries])
+        ).all()
+    } if entries else {}
 
     items = [
         {"movie": movies_by_id[e.movie_id]}
@@ -61,25 +42,12 @@ def library():
         if e.movie_id in movies_by_id
     ]
 
-    my_subscriptions = (
-        UserOTTSubscription.query
-        .filter_by(user_id=current_user.id, ended_at=None)
-        .join(OTTProvider)
-        .order_by(OTTProvider.id)
-        .all()
-    )
-
     return render_template(
         "wishlist/library.html",
         page_title=LIBRARY_TABS[status],
         status=status,
         tabs=LIBRARY_TABS,
         items=items,
-        ott_filter=ott_filter,
-        my_subscriptions=my_subscriptions,
-        ott_icons=OTT_ICONS,
-        default_ott_icon=DEFAULT_OTT_ICON,
-        remove_payload=remove_payload,
     )
 
 
