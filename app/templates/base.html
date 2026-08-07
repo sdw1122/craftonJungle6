@@ -69,8 +69,8 @@
                 <span>봤어요</span><span class="dropdown-count">{{ wishlist_counts.watched }}</span>
               </a>
               <div class="dropdown-divider"></div>
-              <a class="dropdown-item" href="#"><span>문의하기</span></a>
-              <a class="dropdown-item" href="#"><span>설정</span></a>
+              <a class="dropdown-item" href="{{ url_for('pages.contact') }}"><span>문의하기</span></a>
+              <a class="dropdown-item" href="{{url_for('pages.settings')}}"><span>설정</span></a>
               <a class="dropdown-item" href="{{ url_for('auth.logout') }}"><span>로그아웃</span></a>
             </div>
           </div>
