@@ -1030,7 +1030,7 @@ h1 {
 .action-buttons button:hover,
 .rating-buttons button:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .action-buttons button.active,
@@ -1530,7 +1530,7 @@ body.home-ranking-page .container.home-ranking-container {
 .ranking-kicker,
 .ranking-section-eyebrow {
   margin: 0 0 12px;
-  color: #6f8dff;
+  color: #00c853;
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.18em;
@@ -1574,7 +1574,7 @@ body.home-ranking-page .container.home-ranking-container {
   border: 0;
   border-radius: 999px;
   color: #ffffff;
-  background: #4169e1;
+  background: #00e676;
   font: inherit;
   font-size: 13px;
   font-weight: 800;
@@ -1583,7 +1583,7 @@ body.home-ranking-page .container.home-ranking-container {
 
 .ranking-search button:hover,
 .ranking-header-button:hover {
-  background: #5579e7;
+  background: #00e676;
 }
 
 .ranking-section {
@@ -1615,7 +1615,7 @@ body.home-ranking-page .container.home-ranking-container {
 }
 
 .ranking-section-eyebrow-purple {
-  color: #b976ff;
+  color: #fafa89;
 }
 
 .ranking-header-button {
@@ -1669,9 +1669,9 @@ body.home-ranking-page .container.home-ranking-container {
 
 .ranking-tab.active,
 .ranking-tab[aria-selected="true"] {
-  border-color: #4169e1;
+  border-color: #00c853;
   color: #ffffff;
-  background: #4169e1;
+  background: #00c853;
 }
 
 .ranking-tab:focus-visible {
@@ -1755,7 +1755,7 @@ body.home-ranking-page .container.home-ranking-container {
   border: 0;
   border-radius: 10px;
   color: #ffffff;
-  background: #4169e1;
+  background: #00c853;
   font: inherit;
   font-size: 13px;
   font-weight: 800;
@@ -1922,7 +1922,7 @@ body.home-ranking-page .container.home-ranking-container {
 }
 
 .ranking-card:hover .ranking-card-action {
-  background: #4169e1;
+  background: #00c853;
 }
 
 .ranking-empty {
