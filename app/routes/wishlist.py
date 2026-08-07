@@ -4,9 +4,10 @@ from flask import Blueprint, abort, jsonify, redirect, render_template, request,
 from flask_login import current_user, login_required
 
 from ..extensions import db
-from ..models import Movie, OTTAvailability, OTTProvider, UserMovieLibrary, UserOTTSubscription
+from ..models import Movie, OTTAvailability, OTTProvider, UserMovieLibrary
 from ..movie_sync import get_or_create_movie
 from ..ott_icons import DEFAULT_OTT_ICON, OTT_ICONS
+from ..services.movie_catalog_query import serialize_movie_summary
 
 wishlist_bp = Blueprint("wishlist", __name__, url_prefix="/wishlist")
 
@@ -56,18 +57,15 @@ def library():
         remove_payload = {"watch_status": ""}
 
     items = [
-        {"movie": movies_by_id[e.movie_id]}
+        {
+            "movie": movies_by_id[e.movie_id],
+            "summary": serialize_movie_summary(movies_by_id[e.movie_id]),
+        }
         for e in entries
         if e.movie_id in movies_by_id
     ]
 
-    my_subscriptions = (
-        UserOTTSubscription.query
-        .filter_by(user_id=current_user.id, ended_at=None)
-        .join(OTTProvider)
-        .order_by(OTTProvider.id)
-        .all()
-    )
+    all_ott_providers = OTTProvider.query.filter_by(is_active=True).order_by(OTTProvider.id).all()
 
     return render_template(
         "wishlist/library.html",
@@ -76,7 +74,7 @@ def library():
         tabs=LIBRARY_TABS,
         items=items,
         ott_filter=ott_filter,
-        my_subscriptions=my_subscriptions,
+        all_ott_providers=all_ott_providers,
         ott_icons=OTT_ICONS,
         default_ott_icon=DEFAULT_OTT_ICON,
         remove_payload=remove_payload,

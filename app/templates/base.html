@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}키노라이츠 클론{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=4">
   </head>
   <body class="{% block body_class %}{% endblock %}">
     <header class="site-header">
@@ -15,7 +15,7 @@
 
         <nav class="nav-links">
           <a href="{{ url_for('pages.index') }}" class="nav-link{{ ' active' if request.endpoint == 'pages.index' else '' }}">홈</a>
-          <a href="#" class="nav-link">랭킹</a>
+          <a href="{{ url_for('pages.rankings') }}" class="nav-link{{ ' active' if request.endpoint == 'pages.rankings' else '' }}">랭킹</a>
         </nav>
       </div>
 
@@ -69,8 +69,8 @@
                 <span>봤어요</span><span class="dropdown-count">{{ wishlist_counts.watched }}</span>
               </a>
               <div class="dropdown-divider"></div>
-              <a class="dropdown-item" href="#"><span>문의하기</span></a>
-              <a class="dropdown-item" href="#"><span>설정</span></a>
+              <a class="dropdown-item" href="{{ url_for('pages.contact') }}"><span>문의하기</span></a>
+              <a class="dropdown-item" href="{{url_for('pages.settings')}}"><span>설정</span></a>
               <a class="dropdown-item" href="{{ url_for('auth.logout') }}"><span>로그아웃</span></a>
             </div>
           </div>

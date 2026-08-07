@@ -138,6 +138,15 @@ def active_subscription_provider_ids(user_id) -> list[int]:
     ]
 
 
+def list_active_ott_providers() -> list[OTTProvider]:
+    return (
+        OTTProvider.query
+        .filter_by(is_active=True)
+        .order_by(OTTProvider.id)
+        .all()
+    )
+
+
 def list_personalized_movies(*, user_id, limit: int = 3) -> list[dict]:
     candidates = (
         Movie.query
@@ -210,6 +219,27 @@ def list_personalized_movies(*, user_id, limit: int = 3) -> list[dict]:
         movie.tmdb_id,
     ))
     return _serialize_ranked_movies(unseen[:limit])
+
+
+def list_wishlisted_movies(*, user_id, limit: int = 12) -> list[dict]:
+    movies = (
+        Movie.query
+        .join(UserMovieLibrary, UserMovieLibrary.movie_id == Movie.id)
+        .filter(
+            Movie.tmdb_id.isnot(None),
+            UserMovieLibrary.user_id == user_id,
+            UserMovieLibrary.is_wishlisted.is_(True),
+        )
+        .options(selectinload(Movie.titles))
+        .order_by(
+            UserMovieLibrary.updated_at.desc().nullslast(),
+            Movie.popular_rank.asc().nullslast(),
+            Movie.tmdb_id,
+        )
+        .limit(limit)
+        .all()
+    )
+    return _serialize_ranked_movies(movies)
 
 
 def list_ott_rankings(*, limit: int = 3) -> list[dict]:

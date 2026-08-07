@@ -12,16 +12,16 @@
       {% endfor %}
     </div>
 
-    {% if my_subscriptions %}
+    {% if all_ott_providers %}
       <div class="library-ott-tabs">
         <a href="{{ url_for('wishlist.library', status=status, ott='all') }}"
           class="library-ott-tab{{ ' active' if ott_filter == 'all' else '' }}">전체</a>
-        {% for sub in my_subscriptions %}
-          {% set icon = ott_icons.get(sub.provider.code, default_ott_icon) %}
-          <a href="{{ url_for('wishlist.library', status=status, ott=sub.provider_id) }}"
-            class="library-ott-tab{{ ' active' if ott_filter == sub.provider_id|string else '' }}">
+        {% for provider in all_ott_providers %}
+          {% set icon = ott_icons.get(provider.code, default_ott_icon) %}
+          <a href="{{ url_for('wishlist.library', status=status, ott=provider.id) }}"
+            class="library-ott-tab{{ ' active' if ott_filter == provider.id|string else '' }}">
             <span class="library-ott-tab-icon" style="background: {{ icon.color }}">{{ icon.text }}</span>
-            {{ sub.provider.name }}
+            {{ provider.name }}
           </a>
         {% endfor %}
       </div>
@@ -37,14 +37,14 @@
         {% for item in items %}
           <div class="library-row">
             <a class="library-row-poster-link" href="{{ url_for('pages.movie_detail', tmdb_id=item.movie.tmdb_id) }}">
-              {% if item.movie.poster_url %}
-                <img src="{{ item.movie.poster_url }}" alt="{{ item.movie.original_title }} 포스터" class="library-row-poster">
+              {% if item.summary.poster_url %}
+                <img src="{{ item.summary.poster_url }}" alt="{{ item.summary.title }} 포스터" class="library-row-poster">
               {% else %}
                 <div class="library-row-poster library-poster-placeholder">포스터 없음</div>
               {% endif %}
             </a>
             <a class="library-row-info" href="{{ url_for('pages.movie_detail', tmdb_id=item.movie.tmdb_id) }}">
-              <strong>{{ item.movie.original_title }}</strong>
+              <strong>{{ item.summary.title }}</strong>
               <span class="library-row-meta">
                 영화{{ ' · ' ~ item.movie.release_date.year if item.movie.release_date else '' }}
               </span>

@@ -6,10 +6,12 @@ from ..ott_icons import DEFAULT_OTT_ICON, OTT_ICONS
 from ..services.movie_catalog_query import (
     active_subscription_provider_ids,
     get_catalog_movie_record,
+    list_active_ott_providers,
     list_catalog_movies,
     list_ott_rankings,
     list_personalized_movies,
     list_ranked_movies,
+    list_wishlisted_movies,
 )
 
 
@@ -23,7 +25,7 @@ def index():
 
     if page is None or page < 1 or page > 500:
         return render_template(
-            "movies/index.html",
+            "index.html",
             movies=[],
             query=query,
             page=1,
@@ -36,23 +38,25 @@ def index():
         user_id = None
         subscription_provider_ids = []
         personalized_movies = []
+        wishlisted_movies = []
         if current_user.is_authenticated:
             user_id = getattr(current_user, "id", None) or current_user.get_id()
             subscription_provider_ids = active_subscription_provider_ids(user_id)
             personalized_movies = list_personalized_movies(user_id=user_id, limit=3)
+            wishlisted_movies = list_wishlisted_movies(user_id=user_id, limit=12)
 
-        all_movies = list_ranked_movies(limit=3)
+        all_movies = list_ranked_movies(limit=12)
         subscription_movies = (
-            list_ranked_movies(limit=3, provider_ids=subscription_provider_ids)
+            list_ranked_movies(limit=12, provider_ids=subscription_provider_ids)
             if subscription_provider_ids
             else []
         )
-        ott_rankings = list_ott_rankings(limit=3)
+        ott_rankings = list_ott_rankings(limit=12)
         ranking_tabs = [
             {
                 "key": "all",
                 "label": "전체",
-                "title": "전체 OTT TOP 3",
+                "title": "전체 OTT TOP 12",
                 "description": "모든 OTT의 동기화된 인기 순위를 합산한 결과예요.",
                 "movies": all_movies,
                 "empty_message": "동기화된 인기 영화가 없습니다. 먼저 영화 동기화를 실행해주세요.",
@@ -63,7 +67,7 @@ def index():
             {
                 "key": "subscriptions",
                 "label": "내 구독 OTT",
-                "title": "내 구독 OTT TOP 3",
+                "title": "내 구독 OTT TOP 12",
                 "description": "내가 구독 중인 서비스에서 볼 수 있는 인기 작품이에요.",
                 "movies": subscription_movies,
                 "empty_message": "구독 중인 OTT에서 제공하는 영화가 아직 없습니다.",
@@ -77,7 +81,7 @@ def index():
             ranking_tabs.append({
                 "key": f"provider-{provider.id}",
                 "label": provider.name,
-                "title": f"{provider.name} TOP 3",
+                "title": f"{provider.name} TOP 12",
                 "description": f"{provider.name}에서 볼 수 있는 인기 작품이에요.",
                 "movies": ranking["movies"],
                 "empty_message": f"{provider.name} 제공 정보가 있는 영화가 아직 없습니다.",
@@ -87,11 +91,12 @@ def index():
             })
 
         return render_template(
-            "movies/index.html",
+            "index.html",
             home_mode=True,
             query="",
             ranking_tabs=ranking_tabs,
             personalized_movies=personalized_movies,
+            wishlisted_movies=wishlisted_movies,
             ott_icons=OTT_ICONS,
             default_ott_icon=DEFAULT_OTT_ICON,
         )
@@ -99,7 +104,7 @@ def index():
     result = list_catalog_movies(page=page, query=query)
 
     return render_template(
-        "movies/index.html",
+        "index.html",
         home_mode=False,
         movies=result.movies,
         query=query,
@@ -107,6 +112,65 @@ def index():
         total_pages=result.total_pages,
         total_results=result.total_results,
         error_message=None,
+    )
+
+
+@pages_blueprint.get("/rankings")
+def rankings():
+    providers = list_active_ott_providers()
+    selected_ott = request.args.get("ott", "all").strip().lower()
+    selected_provider = None
+    requires_login = False
+    requires_subscription = False
+
+    if selected_ott == "subscriptions":
+        ranking_title = "내 구독 OTT 랭킹"
+        ranking_description = "구독 중인 OTT에서 지금 볼 수 있는 인기 작품을 한곳에 모았어요."
+        if current_user.is_authenticated:
+            user_id = getattr(current_user, "id", None) or current_user.get_id()
+            provider_ids = active_subscription_provider_ids(user_id)
+            requires_subscription = not provider_ids
+            movies = (
+                list_ranked_movies(limit=50, provider_ids=provider_ids)
+                if provider_ids
+                else []
+            )
+        else:
+            requires_login = True
+            movies = []
+    elif selected_ott.isdigit():
+        provider_id = int(selected_ott)
+        selected_provider = next(
+            (provider for provider in providers if provider.id == provider_id),
+            None,
+        )
+        if selected_provider is not None:
+            ranking_title = f"{selected_provider.name} 랭킹"
+            ranking_description = f"{selected_provider.name}에서 볼 수 있는 인기 작품 순위예요."
+            movies = list_ranked_movies(limit=50, provider_ids=[selected_provider.id])
+        else:
+            selected_ott = "all"
+            ranking_title = "전체 OTT 랭킹"
+            ranking_description = "모든 OTT의 동기화된 인기 작품을 순위대로 확인하세요."
+            movies = list_ranked_movies(limit=50)
+    else:
+        selected_ott = "all"
+        ranking_title = "전체 OTT 랭킹"
+        ranking_description = "모든 OTT의 동기화된 인기 작품을 순위대로 확인하세요."
+        movies = list_ranked_movies(limit=50)
+
+    return render_template(
+        "rankings.html",
+        providers=providers,
+        selected_ott=selected_ott,
+        selected_provider=selected_provider,
+        ranking_title=ranking_title,
+        ranking_description=ranking_description,
+        movies=movies,
+        requires_login=requires_login,
+        requires_subscription=requires_subscription,
+        ott_icons=OTT_ICONS,
+        default_ott_icon=DEFAULT_OTT_ICON,
     )
 
 
@@ -157,3 +221,13 @@ def movie_detail(tmdb_id: int):
         my_review=my_review,
         reviews=reviews,
     )
+
+
+@pages_blueprint.get("/contact")
+def contact():
+   
+    return render_template("contact.html")
+
+@pages_blueprint.get("/settings")
+def settings():
+    return render_template("settings.html")

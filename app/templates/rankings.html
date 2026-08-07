@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}{{ ranking_title }} | Junglelights{% endblock %}
+{% block body_class %}dark-page rankings-page{% endblock %}
+{% block main_class %} rankings-container{% endblock %}
+
+{% block content %}
+  <div class="rankings-layout">
+    <aside class="rankings-sidebar">
+      <a class="rankings-back-link" href="{{ url_for('pages.index') }}" aria-label="홈으로 돌아가기">← 홈</a>
+      <div class="rankings-sidebar-heading">
+        <strong>랭킹</strong>
+      </div>
+
+      <nav class="rankings-category-nav" aria-label="OTT 랭킹 카테고리">
+        <a class="rankings-category-link{{ ' active' if selected_ott == 'all' else '' }}" href="{{ url_for('pages.rankings') }}">
+          <span class="rankings-category-symbol rankings-category-all" aria-hidden="true">ALL</span>
+          <span>전체 랭킹</span>
+        </a>
+        <a class="rankings-category-link{{ ' active' if selected_ott == 'subscriptions' else '' }}" href="{{ url_for('pages.rankings', ott='subscriptions') }}">
+          <span class="rankings-category-symbol rankings-category-my" aria-hidden="true">MY</span>
+          <span>내 구독 OTT</span>
+        </a>
+        {% for provider in providers %}
+          {% set icon = ott_icons.get(provider.code, default_ott_icon) %}
+          <a class="rankings-category-link{{ ' active' if selected_ott == provider.id|string else '' }}" href="{{ url_for('pages.rankings', ott=provider.id) }}">
+            <span class="rankings-category-symbol" style="--provider-color: {{ icon.color }}" aria-hidden="true">{{ icon.text }}</span>
+            <span>{{ provider.name }}</span>
+          </a>
+        {% endfor %}
+      </nav>
+    </aside>
+
+    <section class="rankings-content" aria-label="OTT 영화 순위">
+      {% if requires_login %}
+        <div class="rankings-page-state">
+          <span aria-hidden="true">✦</span>
+          <h2>로그인하고 내 구독 OTT 랭킹을 확인하세요</h2>
+          <p>구독 중인 서비스를 합쳐 지금 볼 수 있는 인기 작품을 보여드려요.</p>
+          <a href="{{ url_for('auth.login') }}">로그인하기</a>
+        </div>
+      {% elif requires_subscription %}
+        <div class="rankings-page-state">
+          <span aria-hidden="true">＋</span>
+          <h2>구독 중인 OTT를 먼저 설정해주세요</h2>
+          <p>서비스를 선택하면 해당 OTT에서 볼 수 있는 인기 작품을 모아드려요.</p>
+          <button type="button" id="rankings-ott-edit">구독 OTT 설정</button>
+        </div>
+      {% elif movies %}
+        <div class="rankings-board">
+          {% for movie in movies %}
+            <article class="rankings-movie-card{{ ' rankings-movie-featured' if loop.first else '' }}">
+              <a href="{{ url_for('pages.movie_detail', tmdb_id=movie.tmdb_id) }}">
+                {% set visual_url = movie.backdrop_url or movie.poster_url %}
+                {% if visual_url %}
+                  <img src="{{ visual_url }}" alt="{{ movie.title or movie.original_title }}" loading="lazy">
+                {% else %}
+                  <span class="rankings-movie-placeholder" aria-hidden="true">JUNGLELIGHTS</span>
+                {% endif %}
+                <span class="rankings-movie-shade" aria-hidden="true"></span>
+                <strong class="rankings-movie-number">{{ loop.index }}</strong>
+
+                {% if movie.providers %}
+                  <span class="rankings-movie-providers" aria-label="제공 OTT">
+                    {% for provider in movie.providers[:3] %}
+                      {% set icon = ott_icons.get(provider.code, default_ott_icon) %}
+                      <span style="--provider-color: {{ icon.color }}" title="{{ provider.name }}">{{ icon.text }}</span>
+                    {% endfor %}
+                  </span>
+                {% endif %}
+
+                <span class="rankings-movie-copy">
+                  <strong>{{ movie.title or movie.original_title or '제목 없음' }}</strong>
+                  <span>
+                    {{ movie.release_date[:4] if movie.release_date else '공개일 미정' }}
+                    {% if movie.providers %} · {{ movie.providers | map(attribute='name') | join(', ') }}{% endif %}
+                  </span>
+                </span>
+              </a>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="rankings-page-state">
+          <span aria-hidden="true">🍿</span>
+          <h2>표시할 영화가 아직 없어요</h2>
+          <p>영화와 OTT 제공 정보를 동기화하면 이곳에 순위가 표시됩니다.</p>
+        </div>
+      {% endif %}
+    </section>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  {% if requires_subscription %}
+    <script>
+      (function () {
+        var button = document.getElementById("rankings-ott-edit");
+        var modal = document.getElementById("ott-modal");
+        if (button && modal) {
+          button.addEventListener("click", function () { modal.showModal(); });
+        }
+      })();
+    </script>
+  {% endif %}
+{% endblock %}

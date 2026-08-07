@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import patch
 
 from app import create_app
+from app.ott_icons import OTT_ICONS, TMDB_PROVIDER_NAME_TO_CODE
 from app.services.movie_catalog_query import MoviePage
 
 
@@ -47,6 +48,11 @@ class AppTests(unittest.TestCase):
         for template_name in self.app.jinja_env.list_templates():
             with self.subTest(template=template_name):
                 self.app.jinja_env.get_template(template_name)
+
+    def test_supported_ott_provider_mappings(self):
+        self.assertEqual(TMDB_PROVIDER_NAME_TO_CODE["wavve"], "WAVVE")
+        self.assertNotIn("COUPANG_PLAY", OTT_ICONS)
+        self.assertNotIn("Coupang Play", TMDB_PROVIDER_NAME_TO_CODE)
 
 
 if __name__ == "__main__":

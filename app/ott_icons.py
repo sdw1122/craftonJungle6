@@ -4,7 +4,6 @@ OTT_ICONS = {
     "TVING": {"text": "T", "color": "#FF0050"},
     "WAVVE": {"text": "W", "color": "#1E5FFF"},
     "DISNEY_PLUS": {"text": "D+", "color": "#113CCF"},
-    "COUPANG_PLAY": {"text": "CP", "color": "#00A8E1"},
     "WATCHA": {"text": "왓", "color": "#FF0558"},
     "APPLE_TV_PLUS": {"text": "TV", "color": "#000000"},
 }
@@ -14,11 +13,10 @@ DEFAULT_OTT_ICON = {"text": "?", "color": "#8899aa"}
 # TMDB가 실제로 내려주는 표기와 다를 수 있어, 확인되는 대로 보정 필요
 TMDB_PROVIDER_NAME_TO_CODE = {
     "Netflix": "NETFLIX",
-    "Wavve": "WAVVE",
+    "wavve": "WAVVE",
     "TVING": "TVING",
     "Tving": "TVING",
     "Disney Plus": "DISNEY_PLUS",
-    "Coupang Play": "COUPANG_PLAY",
     "Watcha": "WATCHA",
     "Apple TV Plus": "APPLE_TV_PLUS",
     "Apple TV": "APPLE_TV_PLUS",
