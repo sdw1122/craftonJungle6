@@ -20,14 +20,16 @@
       {% endif %}
       <div class="ranking-grid">
       {% for movie in movies %}
-        <article class="ranking-card{{ ' ranking-card-unranked' if not show_rank else '' }}"{% if carousel %} data-ranking-carousel-item{% if loop.index > 3 %} hidden{% endif %}{% endif %}>
+        {% set movie_title = movie.title or movie.original_title or '제목 없음' %}
+        {% set movie_is_wishlisted = movie.tmdb_id in wishlisted_movie_ids %}
+        <article class="ranking-card ranking-card-with-bookmark{{ ' ranking-card-unranked' if not show_rank else '' }}"{% if carousel %} data-ranking-carousel-item{% if loop.index > 3 %} hidden{% endif %}{% endif %}>
           <a class="ranking-card-link" href="{{ url_for('pages.movie_detail', tmdb_id=movie.tmdb_id) }}">
             {% set visual_url = movie.backdrop_url or movie.poster_url %}
             {% if visual_url %}
               <img
                 class="ranking-card-image"
                 src="{{ visual_url }}"
-                alt="{{ movie.title or movie.original_title }} 배경 이미지"
+                alt="{{ movie_title }} 배경 이미지"
                 loading="lazy"
               >
             {% else %}
@@ -56,10 +58,26 @@
                   · {{ movie.providers | map(attribute='name') | join(', ') }}
                 {% endif %}
               </span>
-              <span class="ranking-card-title">{{ movie.title or movie.original_title or '제목 없음' }}</span>
+              <span class="ranking-card-title">{{ movie_title }}</span>
               <span class="ranking-card-action">자세히 보기 <span aria-hidden="true">→</span></span>
             </span>
           </a>
+          <button
+            type="button"
+            class="ranking-bookmark-button{{ ' active' if movie_is_wishlisted else '' }}"
+            data-wishlist-toggle
+            data-wishlist-url="{{ url_for('wishlist.upsert', tmdb_id=movie.tmdb_id) }}"
+            data-tmdb-id="{{ movie.tmdb_id }}"
+            data-movie-title="{{ movie_title }}"
+            data-authenticated="{{ 'true' if current_user.is_authenticated else 'false' }}"
+            aria-label="{{ '찜 해제' if movie_is_wishlisted else '찜하기' }}: {{ movie_title }}"
+            aria-pressed="{{ 'true' if movie_is_wishlisted else 'false' }}"
+            title="{{ '찜 해제' if movie_is_wishlisted else '찜하기' }}"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6.5 4.5A1.5 1.5 0 0 1 8 3h8a1.5 1.5 0 0 1 1.5 1.5V21L12 17.4 6.5 21V4.5Z"></path>
+            </svg>
+          </button>
         </article>
       {% endfor %}
       </div>
@@ -77,7 +95,6 @@
 {% block main_class %} home-ranking-container{% endblock %}
 
 {% block content %}
-  {% if home_mode %}
     <section class="ranking-section ranking-tab-section" aria-labelledby="ott-tab-ranking-title">
       <div class="ranking-section-header ranking-tab-intro">
         <div>
@@ -146,7 +163,7 @@
     </section>
 
     <section class="home-search-section" aria-label="영화 검색">
-      <form class="ranking-search" method="get" action="{{ url_for('pages.index') }}">
+      <form class="ranking-search" method="get" action="{{ url_for('search.search_page') }}">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <circle cx="11" cy="11" r="7"></circle>
           <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -217,62 +234,9 @@
     </section>
 
     <p class="ranking-source">영화 및 OTT 제공 정보: TMDB · JustWatch 데이터 동기화 기준</p>
-  {% else %}
-    <section class="catalog-search-page">
-      <a class="catalog-back-link" href="{{ url_for('pages.index') }}">← 랭킹 홈</a>
-      <div class="catalog-search-heading">
-        <div>
-          <p class="ranking-section-eyebrow">SEARCH</p>
-          <h1>“{{ query }}” 검색 결과</h1>
-          <p>DB에 동기화된 영화 {{ total_results }}개를 찾았습니다.</p>
-        </div>
-        <form class="ranking-search" method="get" action="{{ url_for('pages.index') }}">
-          <label class="sr-only" for="result-movie-query">영화 검색</label>
-          <input id="result-movie-query" name="query" type="search" value="{{ query }}" required>
-          <button type="submit">검색</button>
-        </form>
-      </div>
-
-      {% if movies %}
-        <div class="catalog-result-grid">
-          {% for movie in movies %}
-            <a class="catalog-result-card" href="{{ url_for('pages.movie_detail', tmdb_id=movie.tmdb_id) }}">
-              {% if movie.poster_url %}
-                <img src="{{ movie.poster_url }}" alt="{{ movie.title or movie.original_title }} 포스터" loading="lazy">
-              {% else %}
-                <span class="catalog-result-placeholder">포스터 없음</span>
-              {% endif %}
-              <strong>{{ movie.title or movie.original_title }}</strong>
-              <span>{{ movie.release_date[:4] if movie.release_date else '공개일 미정' }}</span>
-            </a>
-          {% endfor %}
-        </div>
-
-        <nav class="dark-pagination" aria-label="검색 결과 페이지">
-          {% if page > 1 %}
-            <a href="{{ url_for('pages.index', query=query, page=page - 1) }}">이전</a>
-          {% else %}
-            <span>이전</span>
-          {% endif %}
-          <strong>{{ page }} / {{ total_pages or 1 }}</strong>
-          {% if page < total_pages %}
-            <a href="{{ url_for('pages.index', query=query, page=page + 1) }}">다음</a>
-          {% else %}
-            <span>다음</span>
-          {% endif %}
-        </nav>
-      {% else %}
-        <div class="ranking-empty search-empty">
-          <span aria-hidden="true">🔎</span>
-          <p>검색 결과가 없습니다. 다른 제목이나 인물 이름으로 검색해보세요.</p>
-        </div>
-      {% endif %}
-    </section>
-  {% endif %}
 {% endblock %}
 
 {% block scripts %}
-  {% if home_mode %}
     <script>
       (function () {
         var tabs = Array.from(document.querySelectorAll("[data-ranking-tab]"));
@@ -336,7 +300,8 @@
         if (editButton && modalTrigger) {
           editButton.addEventListener("click", function () { modalTrigger.click(); });
         }
+
       })();
     </script>
-  {% endif %}
+    <script src="{{ url_for('static', filename='js/wishlist-toggle.js') }}"></script>
 {% endblock %}

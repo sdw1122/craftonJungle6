@@ -55,18 +55,26 @@ class PageTests(unittest.TestCase):
         self.app = create_app({"TESTING": True})
         self.client = self.app.test_client()
 
-        self.list_patcher = patch("app.routes.pages.list_catalog_movies")
+        self.list_patcher = patch("app.routes.search.list_catalog_movies")
         self.detail_patcher = patch("app.routes.pages.get_catalog_movie_record")
         self.ranked_patcher = patch("app.routes.pages.list_ranked_movies")
+        self.search_ranked_patcher = patch("app.routes.search.list_ranked_movies")
         self.ott_rankings_patcher = patch("app.routes.pages.list_ott_rankings")
         self.providers_patcher = patch("app.routes.pages.list_active_ott_providers")
         self.wishlisted_patcher = patch("app.routes.pages.list_wishlisted_movies")
+        self.wishlisted_ids_patcher = patch("app.routes.pages.wishlisted_tmdb_ids")
+        self.search_wishlisted_ids_patcher = patch(
+            "app.routes.search.wishlisted_tmdb_ids"
+        )
         self.list_catalog_movies = self.list_patcher.start()
         self.get_catalog_movie_record = self.detail_patcher.start()
         self.list_ranked_movies = self.ranked_patcher.start()
+        self.search_list_ranked_movies = self.search_ranked_patcher.start()
         self.list_ott_rankings = self.ott_rankings_patcher.start()
         self.list_active_ott_providers = self.providers_patcher.start()
         self.list_wishlisted_movies = self.wishlisted_patcher.start()
+        self.wishlisted_tmdb_ids = self.wishlisted_ids_patcher.start()
+        self.search_wishlisted_tmdb_ids = self.search_wishlisted_ids_patcher.start()
 
         self.list_catalog_movies.return_value = MoviePage(
             movies=POPULAR_MOVIES,
@@ -79,6 +87,7 @@ class PageTests(unittest.TestCase):
             payload=DETAIL_PAYLOAD,
         )
         self.list_ranked_movies.return_value = POPULAR_MOVIES
+        self.search_list_ranked_movies.return_value = POPULAR_MOVIES
         self.list_ott_rankings.return_value = [{
             "provider": SimpleNamespace(id=1, code="NETFLIX", name="넷플릭스"),
             "movies": [POPULAR_MOVIES[0]],
@@ -88,14 +97,19 @@ class PageTests(unittest.TestCase):
             SimpleNamespace(id=2, code="TVING", name="티빙"),
         ]
         self.list_wishlisted_movies.return_value = []
+        self.wishlisted_tmdb_ids.return_value = set()
+        self.search_wishlisted_tmdb_ids.return_value = set()
 
     def tearDown(self):
         self.list_patcher.stop()
         self.detail_patcher.stop()
         self.ranked_patcher.stop()
+        self.search_ranked_patcher.stop()
         self.ott_rankings_patcher.stop()
         self.providers_patcher.stop()
         self.wishlisted_patcher.stop()
+        self.wishlisted_ids_patcher.stop()
+        self.search_wishlisted_ids_patcher.stop()
 
     def test_root_renders_database_ranking_carousel(self):
         response = self.client.get("/")
@@ -115,9 +129,13 @@ class PageTests(unittest.TestCase):
         self.assertIn("내가 찜한 콘텐츠", html)
         self.assertIn("로그인하고 찜한 콘텐츠를 모아보세요", html)
         self.list_wishlisted_movies.assert_not_called()
+        self.wishlisted_tmdb_ids.assert_not_called()
+        self.assertIn("data-wishlist-toggle", html)
         self.assertIn("인기 영화", html)
         self.assertIn("/movies/10", html)
         self.assertIn('href="/rankings"', html)
+        self.assertIn('action="/search"', html)
+        self.assertGreaterEqual(html.count('href="/search"'), 1)
 
     def test_rankings_page_renders_all_movies_and_sidebar(self):
         response = self.client.get("/rankings")
@@ -132,6 +150,9 @@ class PageTests(unittest.TestCase):
         self.assertIn("넷플릭스", html)
         self.assertIn('href="/rankings?ott=1"', html)
         self.assertIn("인기 영화", html)
+        self.assertIn("data-wishlist-toggle", html)
+        self.assertIn('src="/static/js/wishlist-toggle.js"', html)
+        self.wishlisted_tmdb_ids.assert_not_called()
 
     def test_rankings_page_filters_selected_provider(self):
         response = self.client.get("/rankings?ott=2")
@@ -179,7 +200,7 @@ class PageTests(unittest.TestCase):
         )
         self.assertIn("currentPage = (page + pageCount) % pageCount;", html)
         self.assertEqual(
-            html.count('<article class="ranking-card" data-ranking-carousel-item'),
+            html.count('<article class="ranking-card ranking-card-with-bookmark" data-ranking-carousel-item'),
             12,
         )
 
@@ -191,7 +212,7 @@ class PageTests(unittest.TestCase):
             total_results=42,
         )
 
-        response = self.client.get("/?query=기생충&page=2")
+        response = self.client.get("/search?query=기생충&page=2")
         html = response.get_data(as_text=True)
 
         self.assertEqual(response.status_code, 200)
@@ -199,9 +220,33 @@ class PageTests(unittest.TestCase):
         self.assertIn('value="기생충"', html)
         self.assertIn("page=1", html)
         self.assertIn("page=3", html)
+        self.assertIn("data-wishlist-toggle", html)
+        self.assertIn('class="ranking-bookmark-button search-bookmark-button', html)
+        self.assertIn('src="/static/js/wishlist-toggle.js"', html)
+        self.search_list_ranked_movies.assert_not_called()
+
+    def test_search_without_query_renders_popular_movies(self):
+        response = self.client.get("/search")
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.search_list_ranked_movies.assert_called_once_with(limit=50)
+        self.list_catalog_movies.assert_not_called()
+        self.assertIn("전체 인기 작품", html)
+        self.assertIn("인기 영화", html)
+        self.assertIn("data-wishlist-toggle", html)
+        self.assertNotIn('aria-label="검색 결과 페이지"', html)
+
+    def test_legacy_root_search_redirects_to_search_page(self):
+        response = self.client.get("/?query=기생충&page=2")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/search?query=", response.headers["Location"])
+        self.assertIn("page=2", response.headers["Location"])
+        self.list_catalog_movies.assert_not_called()
 
     def test_invalid_page_returns_400_without_catalog_query(self):
-        response = self.client.get("/?page=501")
+        response = self.client.get("/search?query=기생충&page=501")
 
         self.assertEqual(response.status_code, 400)
         self.list_catalog_movies.assert_not_called()

@@ -242,6 +242,20 @@ def list_wishlisted_movies(*, user_id, limit: int = 12) -> list[dict]:
     return _serialize_ranked_movies(movies)
 
 
+def wishlisted_tmdb_ids(*, user_id) -> set[int]:
+    rows = (
+        db.session.query(Movie.tmdb_id)
+        .join(UserMovieLibrary, UserMovieLibrary.movie_id == Movie.id)
+        .filter(
+            Movie.tmdb_id.isnot(None),
+            UserMovieLibrary.user_id == user_id,
+            UserMovieLibrary.is_wishlisted.is_(True),
+        )
+        .all()
+    )
+    return {tmdb_id for (tmdb_id,) in rows}
+
+
 def list_ott_rankings(*, limit: int = 3) -> list[dict]:
     providers = (
         OTTProvider.query

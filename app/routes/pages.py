@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request
+from flask import Blueprint, redirect, render_template, request, url_for
 from flask_login import current_user
 
 from ..models import MovieReview, UserMovieLibrary
@@ -7,11 +7,11 @@ from ..services.movie_catalog_query import (
     active_subscription_provider_ids,
     get_catalog_movie_record,
     list_active_ott_providers,
-    list_catalog_movies,
     list_ott_rankings,
     list_personalized_movies,
     list_ranked_movies,
     list_wishlisted_movies,
+    wishlisted_tmdb_ids,
 )
 
 
@@ -21,29 +21,22 @@ pages_blueprint = Blueprint("pages", __name__)
 @pages_blueprint.get("/")
 def index():
     query = request.args.get("query", "").strip()
-    page = request.args.get("page", default=1, type=int)
-
-    if page is None or page < 1 or page > 500:
-        return render_template(
-            "index.html",
-            movies=[],
-            query=query,
-            page=1,
-            total_pages=0,
-            total_results=0,
-            error_message="page는 1부터 500 사이여야 합니다.",
-        ), 400
+    if query:
+        page = request.args.get("page", default=1, type=int)
+        return redirect(url_for("search.search_page", query=query, page=page))
 
     if not query:
         user_id = None
         subscription_provider_ids = []
         personalized_movies = []
         wishlisted_movies = []
+        wishlisted_movie_ids = set()
         if current_user.is_authenticated:
             user_id = getattr(current_user, "id", None) or current_user.get_id()
             subscription_provider_ids = active_subscription_provider_ids(user_id)
             personalized_movies = list_personalized_movies(user_id=user_id, limit=3)
             wishlisted_movies = list_wishlisted_movies(user_id=user_id, limit=12)
+            wishlisted_movie_ids = wishlisted_tmdb_ids(user_id=user_id)
 
         all_movies = list_ranked_movies(limit=12)
         subscription_movies = (
@@ -92,28 +85,13 @@ def index():
 
         return render_template(
             "index.html",
-            home_mode=True,
-            query="",
             ranking_tabs=ranking_tabs,
             personalized_movies=personalized_movies,
             wishlisted_movies=wishlisted_movies,
+            wishlisted_movie_ids=wishlisted_movie_ids,
             ott_icons=OTT_ICONS,
             default_ott_icon=DEFAULT_OTT_ICON,
         )
-
-    result = list_catalog_movies(page=page, query=query)
-
-    return render_template(
-        "index.html",
-        home_mode=False,
-        movies=result.movies,
-        query=query,
-        page=result.page,
-        total_pages=result.total_pages,
-        total_results=result.total_results,
-        error_message=None,
-    )
-
 
 @pages_blueprint.get("/rankings")
 def rankings():
@@ -122,12 +100,16 @@ def rankings():
     selected_provider = None
     requires_login = False
     requires_subscription = False
+    user_id = None
+    wishlisted_movie_ids = set()
+    if current_user.is_authenticated:
+        user_id = getattr(current_user, "id", None) or current_user.get_id()
+        wishlisted_movie_ids = wishlisted_tmdb_ids(user_id=user_id)
 
     if selected_ott == "subscriptions":
         ranking_title = "내 구독 OTT 랭킹"
         ranking_description = "구독 중인 OTT에서 지금 볼 수 있는 인기 작품을 한곳에 모았어요."
         if current_user.is_authenticated:
-            user_id = getattr(current_user, "id", None) or current_user.get_id()
             provider_ids = active_subscription_provider_ids(user_id)
             requires_subscription = not provider_ids
             movies = (
@@ -169,6 +151,7 @@ def rankings():
         movies=movies,
         requires_login=requires_login,
         requires_subscription=requires_subscription,
+        wishlisted_movie_ids=wishlisted_movie_ids,
         ott_icons=OTT_ICONS,
         default_ott_icon=DEFAULT_OTT_ICON,
     )

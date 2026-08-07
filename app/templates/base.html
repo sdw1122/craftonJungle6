@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}키노라이츠 클론{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=4">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=5">
   </head>
   <body class="{% block body_class %}{% endblock %}">
     <header class="site-header">
@@ -40,7 +40,7 @@
             </button>
           {% endif %}
 
-          <a class="icon-button" href="#" title="검색" aria-label="검색">
+          <a class="icon-button" href="{{ url_for('search.search_page') }}" title="검색" aria-label="검색">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="11" cy="11" r="7"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -82,7 +82,7 @@
             </svg>
           </button>
 
-          <a class="icon-button" href="#" title="검색" aria-label="검색">
+          <a class="icon-button" href="{{ url_for('search.search_page') }}" title="검색" aria-label="검색">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="11" cy="11" r="7"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>

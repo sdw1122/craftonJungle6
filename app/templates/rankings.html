@@ -49,11 +49,13 @@
       {% elif movies %}
         <div class="rankings-board">
           {% for movie in movies %}
-            <article class="rankings-movie-card{{ ' rankings-movie-featured' if loop.first else '' }}">
+            {% set movie_title = movie.title or movie.original_title or '제목 없음' %}
+            {% set movie_is_wishlisted = movie.tmdb_id in wishlisted_movie_ids %}
+            <article class="rankings-movie-card rankings-movie-card-with-bookmark{{ ' rankings-movie-featured' if loop.first else '' }}">
               <a href="{{ url_for('pages.movie_detail', tmdb_id=movie.tmdb_id) }}">
                 {% set visual_url = movie.backdrop_url or movie.poster_url %}
                 {% if visual_url %}
-                  <img src="{{ visual_url }}" alt="{{ movie.title or movie.original_title }}" loading="lazy">
+                  <img src="{{ visual_url }}" alt="{{ movie_title }}" loading="lazy">
                 {% else %}
                   <span class="rankings-movie-placeholder" aria-hidden="true">JUNGLELIGHTS</span>
                 {% endif %}
@@ -70,13 +72,29 @@
                 {% endif %}
 
                 <span class="rankings-movie-copy">
-                  <strong>{{ movie.title or movie.original_title or '제목 없음' }}</strong>
+                  <strong>{{ movie_title }}</strong>
                   <span>
                     {{ movie.release_date[:4] if movie.release_date else '공개일 미정' }}
                     {% if movie.providers %} · {{ movie.providers | map(attribute='name') | join(', ') }}{% endif %}
                   </span>
                 </span>
               </a>
+              <button
+                type="button"
+                class="ranking-bookmark-button{{ ' active' if movie_is_wishlisted else '' }}"
+                data-wishlist-toggle
+                data-wishlist-url="{{ url_for('wishlist.upsert', tmdb_id=movie.tmdb_id) }}"
+                data-tmdb-id="{{ movie.tmdb_id }}"
+                data-movie-title="{{ movie_title }}"
+                data-authenticated="{{ 'true' if current_user.is_authenticated else 'false' }}"
+                aria-label="{{ '찜 해제' if movie_is_wishlisted else '찜하기' }}: {{ movie_title }}"
+                aria-pressed="{{ 'true' if movie_is_wishlisted else 'false' }}"
+                title="{{ '찜 해제' if movie_is_wishlisted else '찜하기' }}"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M6.5 4.5A1.5 1.5 0 0 1 8 3h8a1.5 1.5 0 0 1 1.5 1.5V21L12 17.4 6.5 21V4.5Z"></path>
+                </svg>
+              </button>
             </article>
           {% endfor %}
         </div>
@@ -103,4 +121,5 @@
       })();
     </script>
   {% endif %}
+  <script src="{{ url_for('static', filename='js/wishlist-toggle.js') }}"></script>
 {% endblock %}

@@ -1928,6 +1928,10 @@ body.rankings-page .container.rankings-container {
   padding: 42px 18px 17px;
 }
 
+.rankings-movie-card-with-bookmark .rankings-movie-copy {
+  padding-right: 72px;
+}
+
 .rankings-movie-copy strong {
   display: block;
   overflow: hidden;
@@ -2479,6 +2483,70 @@ body.rankings-page .container.rankings-container {
   align-items: flex-start;
 }
 
+.ranking-card-with-bookmark .ranking-card-copy {
+  padding-right: 58px;
+}
+
+.ranking-bookmark-button {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 1px solid rgb(255 255 255 / 24%);
+  border-radius: 12px;
+  color: #ffffff;
+  background: rgb(18 18 21 / 82%);
+  box-shadow: 0 9px 24px rgb(0 0 0 / 38%);
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  transition: color 160ms ease, border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.ranking-bookmark-button svg {
+  width: 22px;
+  height: 22px;
+  fill: transparent;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: fill 160ms ease, transform 160ms ease;
+}
+
+.ranking-bookmark-button:hover {
+  border-color: #6f8dff;
+  background: #4169e1;
+  transform: translateY(-2px);
+}
+
+.ranking-bookmark-button.active {
+  border-color: #6f8dff;
+  color: #ffffff;
+  background: #4169e1;
+}
+
+.ranking-bookmark-button.active svg {
+  fill: currentColor;
+  transform: scale(1.04);
+}
+
+.ranking-bookmark-button:disabled {
+  opacity: 0.58;
+  cursor: wait;
+  transform: none;
+}
+
+.ranking-bookmark-button:focus-visible {
+  outline: 3px solid rgb(111 141 255 / 52%);
+  outline-offset: 3px;
+}
+
 .ranking-card-meta {
   overflow: hidden;
   width: 100%;
@@ -2721,15 +2789,27 @@ body.rankings-page .container.rankings-container {
   gap: 20px;
 }
 
-.catalog-result-card {
+.catalog-result-card-shell {
+  min-width: 0;
+}
+
+.catalog-result-visual {
+  position: relative;
+}
+
+.catalog-result-poster-link,
+.catalog-result-card-copy {
   display: flex;
   min-width: 0;
-  flex-direction: column;
   color: #ffffff;
   text-decoration: none;
 }
 
-.catalog-result-card img,
+.catalog-result-poster-link {
+  width: 100%;
+}
+
+.catalog-result-poster-link img,
 .catalog-result-placeholder {
   display: flex;
   align-items: center;
@@ -2742,7 +2822,11 @@ body.rankings-page .container.rankings-container {
   background: #171719;
 }
 
-.catalog-result-card strong {
+.catalog-result-card-copy {
+  flex-direction: column;
+}
+
+.catalog-result-card-copy strong {
   overflow: hidden;
   margin-top: 12px;
   font-size: 15px;
@@ -2750,10 +2834,15 @@ body.rankings-page .container.rankings-container {
   white-space: nowrap;
 }
 
-.catalog-result-card > span:last-child {
+.catalog-result-card-copy > span:last-child {
   margin-top: 5px;
   color: #777780;
   font-size: 12px;
+}
+
+.search-bookmark-button {
+  right: 12px;
+  bottom: 12px;
 }
 
 .dark-pagination {
@@ -2921,6 +3010,13 @@ body.rankings-page .container.rankings-container {
 
   .ranking-card-title {
     font-size: 25px;
+  }
+
+  .ranking-bookmark-button {
+    right: 13px;
+    bottom: 13px;
+    width: 42px;
+    height: 42px;
   }
 
   .ranking-section-personal {
