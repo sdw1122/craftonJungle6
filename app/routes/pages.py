@@ -1,5 +1,6 @@
+from flask import Blueprint, render_template, request
+from flask_login import current_user, login_required
 from flask import Blueprint, redirect, render_template, request, url_for
-from flask_login import current_user
 
 from ..models import MovieReview, UserMovieLibrary
 from ..ott_icons import DEFAULT_OTT_ICON, OTT_ICONS
@@ -222,5 +223,6 @@ def contact():
     return render_template("contact.html")
 
 @pages_blueprint.get("/settings")
+@login_required
 def settings():
     return render_template("settings.html")
