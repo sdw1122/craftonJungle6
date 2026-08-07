@@ -311,6 +311,20 @@ class RecommendationHomeTests(unittest.TestCase):
             patch("app.routes.pages.active_subscription_provider_ids", return_value=[]),
             patch("app.routes.pages.list_ranked_movies", return_value=[]),
             patch("app.routes.pages.list_personalized_movies", return_value=[]),
+            patch(
+                "app.routes.pages.list_wishlisted_movies",
+                return_value=[{
+                    "tmdb_id": 77,
+                    "title": "찜한 영화",
+                    "original_title": "Wishlisted Movie",
+                    "overview": None,
+                    "release_date": "2026-01-01",
+                    "poster_url": "https://image.example/wishlist.jpg",
+                    "backdrop_url": None,
+                    "popular_rank": 9,
+                    "providers": [],
+                }],
+            ) as wishlisted,
             patch("app.routes.pages.list_ott_rankings", return_value=[]),
         ):
             response = client.get("/")
@@ -320,6 +334,11 @@ class RecommendationHomeTests(unittest.TestCase):
         self.assertIn("맞춤 랭킹", html)
         self.assertIn("선호 장르와 감상 기록", html)
         self.assertIn("구독 OTT 설정", html)
+        self.assertIn("내가 찜한 콘텐츠", html)
+        self.assertIn("찜한 영화", html)
+        self.assertIn('href="/wishlist/?status=wishlisted"', html)
+        self.assertNotIn('<strong class="ranking-number">1</strong>', html)
+        wishlisted.assert_called_once_with(user_id=LoggedInUser.id, limit=12)
 
     def test_home_recommendations_only_generate_after_button_click(self):
         script_path = Path(__file__).resolve().parents[1] / "app" / "static" / "js" / "recommendations.js"
@@ -342,6 +361,7 @@ class RecommendationHomeTests(unittest.TestCase):
             patch("app.routes.pages.active_subscription_provider_ids", return_value=[1, 2]),
             patch("app.routes.pages.list_ranked_movies", return_value=[]) as ranked,
             patch("app.routes.pages.list_personalized_movies", return_value=[]),
+            patch("app.routes.pages.list_wishlisted_movies", return_value=[]),
             patch("app.routes.pages.list_ott_rankings", return_value=[]),
         ):
             response = client.get("/")
@@ -351,7 +371,7 @@ class RecommendationHomeTests(unittest.TestCase):
             ranked.call_args_list,
             [call(limit=12), call(limit=12, provider_ids=[1, 2])],
         )
-        self.assertIn("내 구독 OTT TOP 12", response.get_data(as_text=True))
+        self.assertIn('data-ranking-tab="subscriptions"', response.get_data(as_text=True))
 
 
 if __name__ == "__main__":

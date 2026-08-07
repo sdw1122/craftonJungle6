@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 
-{% macro ranking_grid(movies, empty_message, carousel=false) %}
+{% macro ranking_grid(movies, empty_message, carousel=false, show_rank=true, carousel_label='랭킹 목록') %}
   {% if movies %}
     <div class="ranking-carousel{{ ' ranking-carousel-static' if not carousel else '' }}"{% if carousel and movies|length > 3 %} data-ranking-carousel{% endif %}>
       {% if carousel and movies|length > 3 %}
-        <div class="ranking-carousel-controls" aria-label="랭킹 목록 이동">
-          <button type="button" data-ranking-carousel-prev aria-label="이전 순위 3개 보기">
+        <div class="ranking-carousel-controls" aria-label="{{ carousel_label }} 이동">
+          <button type="button" data-ranking-carousel-prev aria-label="이전 콘텐츠 3개 보기">
             <svg class="ranking-carousel-arrow" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M15 18 9 12l6-6"></path>
             </svg>
           </button>
           <span data-ranking-carousel-status aria-live="polite">1–3 / {{ movies|length }}</span>
-          <button type="button" data-ranking-carousel-next aria-label="다음 순위 3개 보기">
+          <button type="button" data-ranking-carousel-next aria-label="다음 콘텐츠 3개 보기">
             <svg class="ranking-carousel-arrow" viewBox="0 0 24 24" aria-hidden="true">
               <path d="m9 18 6-6-6-6"></path>
             </svg>
@@ -20,7 +20,7 @@
       {% endif %}
       <div class="ranking-grid">
       {% for movie in movies %}
-        <article class="ranking-card"{% if carousel %} data-ranking-carousel-item{% if loop.index > 3 %} hidden{% endif %}{% endif %}>
+        <article class="ranking-card{{ ' ranking-card-unranked' if not show_rank else '' }}"{% if carousel %} data-ranking-carousel-item{% if loop.index > 3 %} hidden{% endif %}{% endif %}>
           <a class="ranking-card-link" href="{{ url_for('pages.movie_detail', tmdb_id=movie.tmdb_id) }}">
             {% set visual_url = movie.backdrop_url or movie.poster_url %}
             {% if visual_url %}
@@ -34,7 +34,9 @@
               <div class="ranking-card-image ranking-card-placeholder" aria-hidden="true">JUNGLELIGHTS</div>
             {% endif %}
             <span class="ranking-card-shade" aria-hidden="true"></span>
-            <strong class="ranking-number">{{ loop.index }}</strong>
+            {% if show_rank %}
+              <strong class="ranking-number">{{ loop.index }}</strong>
+            {% endif %}
 
             {% if movie.providers %}
               <span class="ranking-provider-stack" aria-label="제공 OTT">
@@ -76,30 +78,17 @@
 
 {% block content %}
   {% if home_mode %}
-    <section class="ranking-hero">
-      <div>
-        <p class="ranking-kicker">YOUR STREAMING GUIDE</p>
-        <h1>오늘 뭐 볼까?</h1>
-        <p>구독 중인 OTT와 취향을 한 번에 비교해 지금 볼 작품을 골라보세요.</p>
-      </div>
-      <form class="ranking-search" method="get" action="{{ url_for('pages.index') }}">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <circle cx="11" cy="11" r="7"></circle>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        </svg>
-        <label class="sr-only" for="home-movie-query">영화, 배우 또는 감독 검색</label>
-        <input id="home-movie-query" name="query" type="search" placeholder="영화, 배우 또는 감독 검색">
-        <button type="submit">검색</button>
-      </form>
-    </section>
-
     <section class="ranking-section ranking-tab-section" aria-labelledby="ott-tab-ranking-title">
       <div class="ranking-section-header ranking-tab-intro">
         <div>
-          <p class="ranking-section-eyebrow">OTT RANKING</p>
           <h2 id="ott-tab-ranking-title">OTT 랭킹</h2>
-          <p>전체, 내 구독 서비스 또는 원하는 OTT를 선택해 비교해보세요.</p>
         </div>
+        <a class="ranking-more-link" href="{{ url_for('pages.rankings') }}">
+          더보기
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m9 18 6-6-6-6"></path>
+          </svg>
+        </a>
       </div>
 
       <div class="ranking-tabs" role="tablist" aria-label="OTT 랭킹 선택">
@@ -132,14 +121,6 @@
             data-ranking-panel="{{ tab.key }}"
             {{ 'hidden' if not loop.first else '' }}
           >
-            <div class="ranking-tab-panel-header">
-              <div>
-                <h3>{{ tab.title }}</h3>
-                <p>{{ tab.description }}</p>
-              </div>
-              <span>최근 동기화 기준</span>
-            </div>
-
             {% if tab.requires_login %}
               <div class="ranking-tab-state">
                 <div>
@@ -164,6 +145,18 @@
       </div>
     </section>
 
+    <section class="home-search-section" aria-label="영화 검색">
+      <form class="ranking-search" method="get" action="{{ url_for('pages.index') }}">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <label class="sr-only" for="home-movie-query">영화, 배우 또는 감독 검색</label>
+        <input id="home-movie-query" name="query" type="search" placeholder="영화, 배우 또는 감독 검색">
+        <button type="submit">검색</button>
+      </form>
+    </section>
+
     <section class="ranking-section ranking-section-personal" aria-labelledby="personal-ranking-title">
       <div class="ranking-section-header">
         <div>
@@ -180,6 +173,43 @@
             <span class="personal-login-icon" aria-hidden="true">✦</span>
             <h3>나만의 랭킹을 만나보세요</h3>
             <p>로그인하고 선호 장르와 OTT를 설정하면 맞춤 영화 세 편을 골라드려요.</p>
+          </div>
+          <a href="{{ url_for('auth.login') }}">로그인하기</a>
+        </div>
+      {% endif %}
+    </section>
+
+    <section class="ranking-section ranking-section-wishlist" aria-labelledby="wishlist-content-title">
+      <div class="ranking-section-header">
+        <div>
+          <p class="ranking-section-eyebrow ranking-section-eyebrow-wishlist">MY LIBRARY</p>
+          <h2 id="wishlist-content-title">내가 찜한 콘텐츠</h2>
+          <p>저장한 영화 중 최근에 찜하거나 수정한 콘텐츠부터 보여드려요.</p>
+        </div>
+        {% if current_user.is_authenticated %}
+          <a class="ranking-more-link" href="{{ url_for('wishlist.library', status='wishlisted') }}">
+            더보기
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m9 18 6-6-6-6"></path>
+            </svg>
+          </a>
+        {% endif %}
+      </div>
+
+      {% if current_user.is_authenticated %}
+        {{ ranking_grid(
+          wishlisted_movies,
+          '아직 찜한 콘텐츠가 없어요. 영화 상세 페이지에서 보고 싶은 작품을 찜해보세요.',
+          true,
+          false,
+          '찜 콘텐츠 목록'
+        ) }}
+      {% else %}
+        <div class="personal-login-card wishlist-login-card">
+          <div>
+            <span class="personal-login-icon wishlist-login-icon" aria-hidden="true">♡</span>
+            <h3>로그인하고 찜한 콘텐츠를 모아보세요</h3>
+            <p>보고 싶은 영화를 저장하면 이곳에서 한 번에 확인할 수 있어요.</p>
           </div>
           <a href="{{ url_for('auth.login') }}">로그인하기</a>
         </div>

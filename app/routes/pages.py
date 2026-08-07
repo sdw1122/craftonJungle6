@@ -6,10 +6,12 @@ from ..ott_icons import DEFAULT_OTT_ICON, OTT_ICONS
 from ..services.movie_catalog_query import (
     active_subscription_provider_ids,
     get_catalog_movie_record,
+    list_active_ott_providers,
     list_catalog_movies,
     list_ott_rankings,
     list_personalized_movies,
     list_ranked_movies,
+    list_wishlisted_movies,
 )
 
 
@@ -36,10 +38,12 @@ def index():
         user_id = None
         subscription_provider_ids = []
         personalized_movies = []
+        wishlisted_movies = []
         if current_user.is_authenticated:
             user_id = getattr(current_user, "id", None) or current_user.get_id()
             subscription_provider_ids = active_subscription_provider_ids(user_id)
             personalized_movies = list_personalized_movies(user_id=user_id, limit=3)
+            wishlisted_movies = list_wishlisted_movies(user_id=user_id, limit=12)
 
         all_movies = list_ranked_movies(limit=12)
         subscription_movies = (
@@ -92,6 +96,7 @@ def index():
             query="",
             ranking_tabs=ranking_tabs,
             personalized_movies=personalized_movies,
+            wishlisted_movies=wishlisted_movies,
             ott_icons=OTT_ICONS,
             default_ott_icon=DEFAULT_OTT_ICON,
         )
@@ -107,6 +112,65 @@ def index():
         total_pages=result.total_pages,
         total_results=result.total_results,
         error_message=None,
+    )
+
+
+@pages_blueprint.get("/rankings")
+def rankings():
+    providers = list_active_ott_providers()
+    selected_ott = request.args.get("ott", "all").strip().lower()
+    selected_provider = None
+    requires_login = False
+    requires_subscription = False
+
+    if selected_ott == "subscriptions":
+        ranking_title = "내 구독 OTT 랭킹"
+        ranking_description = "구독 중인 OTT에서 지금 볼 수 있는 인기 작품을 한곳에 모았어요."
+        if current_user.is_authenticated:
+            user_id = getattr(current_user, "id", None) or current_user.get_id()
+            provider_ids = active_subscription_provider_ids(user_id)
+            requires_subscription = not provider_ids
+            movies = (
+                list_ranked_movies(limit=50, provider_ids=provider_ids)
+                if provider_ids
+                else []
+            )
+        else:
+            requires_login = True
+            movies = []
+    elif selected_ott.isdigit():
+        provider_id = int(selected_ott)
+        selected_provider = next(
+            (provider for provider in providers if provider.id == provider_id),
+            None,
+        )
+        if selected_provider is not None:
+            ranking_title = f"{selected_provider.name} 랭킹"
+            ranking_description = f"{selected_provider.name}에서 볼 수 있는 인기 작품 순위예요."
+            movies = list_ranked_movies(limit=50, provider_ids=[selected_provider.id])
+        else:
+            selected_ott = "all"
+            ranking_title = "전체 OTT 랭킹"
+            ranking_description = "모든 OTT의 동기화된 인기 작품을 순위대로 확인하세요."
+            movies = list_ranked_movies(limit=50)
+    else:
+        selected_ott = "all"
+        ranking_title = "전체 OTT 랭킹"
+        ranking_description = "모든 OTT의 동기화된 인기 작품을 순위대로 확인하세요."
+        movies = list_ranked_movies(limit=50)
+
+    return render_template(
+        "rankings.html",
+        providers=providers,
+        selected_ott=selected_ott,
+        selected_provider=selected_provider,
+        ranking_title=ranking_title,
+        ranking_description=ranking_description,
+        movies=movies,
+        requires_login=requires_login,
+        requires_subscription=requires_subscription,
+        ott_icons=OTT_ICONS,
+        default_ott_icon=DEFAULT_OTT_ICON,
     )
 
 
