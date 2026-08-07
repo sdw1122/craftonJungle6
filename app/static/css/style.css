@@ -254,6 +254,15 @@ body {
   padding: 24px;
 }
 
+body.dark-page {
+  background: #000000;
+}
+
+body.dark-page .container {
+  display: block;
+  padding: 0;
+}
+
 .container.catalog-container {
   display: block;
   width: min(100%, 1240px);
@@ -1038,11 +1047,9 @@ h1 {
 }
 
 .library-page {
-  width: min(1080px, 94vw);
+  max-width: 1080px;
   margin: 0 auto;
-  padding: 40px 32px;
-  background: #101010;
-  border-radius: 24px;
+  padding: 48px 32px 80px;
   color: #ffffff;
 }
 
