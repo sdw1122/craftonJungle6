@@ -17,7 +17,12 @@ from app.services.recommendations import (
     score_candidates,
     should_exclude_known_movie,
 )
-from app.services.movie_catalog import MovieCatalogSyncError, collect_popular_movies
+from app.services.movie_catalog import (
+    MovieCatalogSyncError,
+    collect_now_playing_movies,
+    collect_popular_movies,
+)
+from app.services.tmdb import TMDBClient, normalize_movie_detail
 
 
 class FakeAI:
@@ -229,6 +234,102 @@ class MovieCatalogCollectionTests(unittest.TestCase):
         with self.assertRaises(MovieCatalogSyncError):
             collect_popular_movies(FakeTMDB(), 100)
 
+    def test_collects_all_unique_non_adult_now_playing_movies(self):
+        class FakeTMDB:
+            def __init__(self):
+                self.pages = []
+
+            def get_now_playing_movies(self, page):
+                self.pages.append(page)
+                start = 1 if page == 1 else (page - 1) * 20
+                results = [
+                    {"id": movie_id, "title": f"상영작 {movie_id}", "adult": False}
+                    for movie_id in range(start, start + 20)
+                ]
+                if page == 1:
+                    results[0]["adult"] = True
+                return {"page": page, "total_pages": 3, "results": results}
+
+        tmdb = FakeTMDB()
+        movies = collect_now_playing_movies(tmdb)
+
+        self.assertEqual(len(movies), 58)
+        self.assertEqual(len({movie["id"] for movie in movies}), 58)
+        self.assertNotIn(1, {movie["id"] for movie in movies})
+        self.assertEqual(tmdb.pages, [1, 2, 3])
+
+    def test_now_playing_request_uses_korean_region(self):
+        tmdb = TMDBClient("test-token")
+        with patch.object(tmdb, "_get", return_value={"results": []}) as get:
+            tmdb.get_now_playing_movies(page=2)
+
+        get.assert_called_once_with(
+            "/movie/now_playing",
+            language="ko-KR",
+            region="KR",
+            page=2,
+        )
+
+    def test_movie_detail_requests_country_release_dates(self):
+        tmdb = TMDBClient("test-token")
+        with patch.object(tmdb, "_get", return_value={"id": 10}) as get:
+            tmdb.get_movie(10)
+
+        get.assert_called_once_with(
+            "/movie/10",
+            language="ko-KR",
+            append_to_response="credits,release_dates",
+        )
+
+    def test_normalize_movie_detail_prefers_korean_theatrical_release(self):
+        movie = {
+            "id": 10,
+            "release_date": "2025-01-01",
+            "release_dates": {
+                "results": [
+                    {
+                        "iso_3166_1": "US",
+                        "release_dates": [{"type": 3, "release_date": "2025-01-01T00:00:00.000Z"}],
+                    },
+                    {
+                        "iso_3166_1": "KR",
+                        "release_dates": [
+                            {"type": 2, "release_date": "2025-02-01T00:00:00.000Z"},
+                            {"type": 3, "release_date": "2025-02-10T00:00:00.000Z"},
+                        ],
+                    },
+                ],
+            },
+        }
+
+        normalized = normalize_movie_detail(movie, {})
+
+        self.assertEqual(normalized["release_date"], "2025-02-10")
+
+    def test_normalize_movie_detail_does_not_fallback_to_foreign_release(self):
+        movie = {
+            "id": 10,
+            "release_date": "2025-01-01",
+            "release_dates": {
+                "results": [{
+                    "iso_3166_1": "US",
+                    "release_dates": [{"type": 3, "release_date": "2025-01-01T00:00:00.000Z"}],
+                }],
+            },
+        }
+
+        normalized = normalize_movie_detail(movie, {})
+
+        self.assertIsNone(normalized["release_date"])
+
+    def test_empty_now_playing_results_fail_before_persistence(self):
+        class FakeTMDB:
+            def get_now_playing_movies(self, page):
+                return {"page": page, "total_pages": 0, "results": []}
+
+        with self.assertRaises(MovieCatalogSyncError):
+            collect_now_playing_movies(FakeTMDB())
+
     def test_sync_cli_is_registered_with_limit_option(self):
         app = create_app({"TESTING": True})
         result = app.test_cli_runner().invoke(args=["sync-popular-movies", "--help"])
@@ -343,6 +444,7 @@ class RecommendationHomeTests(unittest.TestCase):
         with (
             patch("app.routes.pages.active_subscription_provider_ids", return_value=[]),
             patch("app.routes.pages.list_ranked_movies", return_value=[]),
+            patch("app.routes.pages.list_now_playing_movies", return_value=[]),
             patch("app.routes.pages.list_random_movies", return_value=[]),
             patch("app.routes.pages.list_personalized_movies", return_value=[]),
             patch(
@@ -398,6 +500,7 @@ class RecommendationHomeTests(unittest.TestCase):
         with (
             patch("app.routes.pages.active_subscription_provider_ids", return_value=[1, 2]),
             patch("app.routes.pages.list_ranked_movies", return_value=[]) as ranked,
+            patch("app.routes.pages.list_now_playing_movies", return_value=[]),
             patch("app.routes.pages.list_random_movies", return_value=[]),
             patch("app.routes.pages.list_personalized_movies", return_value=[]),
             patch("app.routes.pages.list_wishlisted_movies", return_value=[]),

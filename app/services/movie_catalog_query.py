@@ -51,7 +51,7 @@ def _localized_title(movie: Movie) -> str:
     return primary or movie.original_title
 
 
-def serialize_movie_summary(movie: Movie) -> dict:
+def serialize_movie_summary(movie: Movie, *, is_streaming: bool = False) -> dict:
     return {
         "tmdb_id": movie.tmdb_id,
         "title": _localized_title(movie),
@@ -60,7 +60,23 @@ def serialize_movie_summary(movie: Movie) -> dict:
         "release_date": movie.release_date.isoformat() if movie.release_date else None,
         "poster_url": movie.poster_url,
         "backdrop_url": movie.backdrop_url,
+        "is_streaming": is_streaming,
     }
+
+
+def streaming_movie_ids(movie_ids: list) -> set:
+    if not movie_ids:
+        return set()
+    rows = (
+        db.session.query(OTTAvailability.movie_id)
+        .filter(
+            OTTAvailability.movie_id.in_(movie_ids),
+            OTTAvailability.region_code == "KR",
+        )
+        .distinct()
+        .all()
+    )
+    return {movie_id for (movie_id,) in rows}
 
 
 def _serialize_ranked_movies(movies: list[Movie]) -> list[dict]:
@@ -94,8 +110,12 @@ def _serialize_ranked_movies(movies: list[Movie]) -> list[dict]:
 
     results = []
     for movie in movies:
-        payload = serialize_movie_summary(movie)
+        payload = serialize_movie_summary(
+            movie,
+            is_streaming=bool(providers_by_movie.get(movie.id)),
+        )
         payload["popular_rank"] = movie.popular_rank
+        payload["now_playing_rank"] = movie.now_playing_rank
         payload["providers"] = providers_by_movie.get(movie.id, [])
         results.append(payload)
     return results
@@ -120,6 +140,21 @@ def list_ranked_movies(*, limit: int = 3, provider_ids: list[int] | None = None)
         query
         .options(selectinload(Movie.titles))
         .order_by(Movie.popular_rank, Movie.tmdb_id)
+        .limit(limit)
+        .all()
+    )
+    return _serialize_ranked_movies(movies)
+
+
+def list_now_playing_movies(*, limit: int = 50) -> list[dict]:
+    movies = (
+        Movie.query
+        .filter(
+            Movie.tmdb_id.isnot(None),
+            Movie.now_playing_rank.isnot(None),
+        )
+        .options(selectinload(Movie.titles))
+        .order_by(Movie.now_playing_rank, Movie.tmdb_id)
         .limit(limit)
         .all()
     )
@@ -314,8 +349,15 @@ def list_catalog_movies(*, page: int = 1, query: str = "") -> MoviePage:
         .limit(CATALOG_PAGE_SIZE)
         .all()
     )
+    streaming_ids = streaming_movie_ids([movie.id for movie in movies])
     return MoviePage(
-        movies=[serialize_movie_summary(movie) for movie in movies],
+        movies=[
+            serialize_movie_summary(
+                movie,
+                is_streaming=movie.id in streaming_ids,
+            )
+            for movie in movies
+        ],
         page=page,
         total_pages=total_pages,
         total_results=total_results,
@@ -378,6 +420,13 @@ def get_catalog_movie_record(tmdb_id: int) -> MovieDetailRecord | None:
         }
         for item in availability
     ]
+    if movie.now_playing_rank is not None:
+        watch_providers.insert(0, {
+            "name": "박스오피스",
+            "code": "BOX_OFFICE",
+            "offer_type": "THEATRICAL",
+            "content_url": f"https://www.themoviedb.org/movie/{movie.tmdb_id}?language=ko-KR",
+        })
 
     payload = {
         **serialize_movie_summary(movie),
@@ -389,6 +438,8 @@ def get_catalog_movie_record(tmdb_id: int) -> MovieDetailRecord | None:
         ],
         "directors": directors,
         "cast": cast,
+        "now_playing_rank": movie.now_playing_rank,
+        "is_streaming": bool(availability),
         "watch_providers": watch_providers,
         "watch_provider_link": next(
             (item.content_url for item in availability if item.content_url),

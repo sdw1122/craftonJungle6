@@ -8,6 +8,7 @@ OTT_ICONS = {
     "APPLE_TV_PLUS": {"text": "TV", "color": "#000000"},
 }
 DEFAULT_OTT_ICON = {"text": "?", "color": "#8899aa"}
+BOX_OFFICE_ICON = {"text": "BOX", "color": "#e85d04"}
 
 # TMDB watch-provider 이름(provider_name) -> 우리 ott_providers.code 매칭
 # TMDB가 실제로 내려주는 표기와 다를 수 있어, 확인되는 대로 보정 필요

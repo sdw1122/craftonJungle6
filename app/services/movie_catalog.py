@@ -40,7 +40,6 @@ TMDB_GENRES: dict[int, tuple[str, str]] = {
     37: ("WESTERN", "서부"),
 }
 
-
 class MovieCatalogSyncError(RuntimeError):
     pass
 
@@ -48,6 +47,7 @@ class MovieCatalogSyncError(RuntimeError):
 @dataclass(frozen=True)
 class MovieCatalogSyncResult:
     requested: int
+    now_playing_requested: int
     created: int
     updated: int
     titles_synced: int
@@ -64,12 +64,43 @@ def _parse_release_date(value: str | None) -> date | None:
 
 
 def collect_popular_movies(tmdb: TMDBClient, limit: int) -> list[dict[str, Any]]:
+    return _collect_ranked_movies(
+        tmdb.get_popular_movies,
+        limit=limit,
+        label="인기 영화",
+    )
+
+
+def collect_now_playing_movies(tmdb: TMDBClient) -> list[dict[str, Any]]:
+    movies: dict[int, dict[str, Any]] = {}
+    page = 1
+    total_pages = 500
+
+    while page <= min(total_pages, 500):
+        result = tmdb.get_now_playing_movies(page)
+        total_pages = min(int(result.get("total_pages") or 0), 500)
+        page_results = result.get("results") or []
+        if not page_results:
+            break
+        for movie in page_results:
+            tmdb_id = movie.get("id")
+            if tmdb_id is None or movie.get("adult") is True:
+                continue
+            movies.setdefault(int(tmdb_id), movie)
+        page += 1
+
+    if not movies:
+        raise MovieCatalogSyncError("TMDB 한국 현재 상영작을 확보하지 못했습니다.")
+    return list(movies.values())
+
+
+def _collect_ranked_movies(fetch_page, *, limit: int, label: str) -> list[dict[str, Any]]:
     movies: dict[int, dict[str, Any]] = {}
     page = 1
     total_pages = 500
 
     while len(movies) < limit and page <= min(total_pages, 500):
-        result = tmdb.get_popular_movies(page)
+        result = fetch_page(page)
         total_pages = min(int(result.get("total_pages") or 0), 500)
         page_results = result.get("results") or []
         if not page_results:
@@ -85,7 +116,7 @@ def collect_popular_movies(tmdb: TMDBClient, limit: int) -> list[dict[str, Any]]
 
     if len(movies) != limit:
         raise MovieCatalogSyncError(
-            f"TMDB 인기 영화 {limit}편을 확보하지 못했습니다. 수집 결과: {len(movies)}편"
+            f"TMDB {label} {limit}편을 확보하지 못했습니다. 수집 결과: {len(movies)}편"
         )
     return list(movies.values())
 
@@ -97,12 +128,24 @@ class MovieCatalogSyncService:
     def sync_popular(self, limit: int = 100) -> MovieCatalogSyncResult:
         try:
             popular_movies = collect_popular_movies(self.tmdb, limit)
+            now_playing_movies = collect_now_playing_movies(self.tmdb)
+            popular_ranks = {
+                int(summary["id"]): rank
+                for rank, summary in enumerate(popular_movies, start=1)
+            }
+            now_playing_ranks = {
+                int(summary["id"]): rank
+                for rank, summary in enumerate(now_playing_movies, start=1)
+            }
+            movie_ids = list(popular_ranks)
+            movie_ids.extend(
+                tmdb_id for tmdb_id in now_playing_ranks if tmdb_id not in popular_ranks
+            )
             movies = []
-            for rank, summary in enumerate(popular_movies, start=1):
-                tmdb_id = int(summary["id"])
+            for tmdb_id in movie_ids:
                 detail = self.tmdb.get_movie(tmdb_id)
                 providers = self.tmdb.get_watch_providers(tmdb_id)
-                movies.append((rank, normalize_movie_detail(detail, providers)))
+                movies.append(normalize_movie_detail(detail, providers))
         except TMDBError as exc:
             raise MovieCatalogSyncError(exc.message) from exc
 
@@ -120,8 +163,12 @@ class MovieCatalogSyncService:
                 {Movie.popular_rank: None},
                 synchronize_session=False,
             )
+            Movie.query.filter(Movie.now_playing_rank.isnot(None)).update(
+                {Movie.now_playing_rank: None},
+                synchronize_session=False,
+            )
 
-            for rank, payload in movies:
+            for payload in movies:
                 tmdb_id = int(payload["tmdb_id"])
                 movie = Movie.query.filter_by(tmdb_id=tmdb_id).first()
                 if movie is None:
@@ -150,7 +197,8 @@ class MovieCatalogSyncService:
                 movie.original_language = payload.get("original_language") or None
                 movie.poster_url = payload.get("poster_url")
                 movie.backdrop_url = payload.get("backdrop_url")
-                movie.popular_rank = rank
+                movie.popular_rank = popular_ranks.get(tmdb_id)
+                movie.now_playing_rank = now_playing_ranks.get(tmdb_id)
                 movie.updated_at = now
 
                 localized_title = (
@@ -241,6 +289,7 @@ class MovieCatalogSyncService:
 
         return MovieCatalogSyncResult(
             requested=limit,
+            now_playing_requested=len(now_playing_movies),
             created=created,
             updated=updated,
             titles_synced=titles_synced,

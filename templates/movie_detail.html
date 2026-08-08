@@ -4,8 +4,8 @@
 {% block body_class %}dark-page{% endblock %}
 
 {% block content %}
-{% set offer_type_labels = {'SUBSCRIPTION': '정액제', 'FREE': '무료', 'RENT': '대여', 'BUY': '구매'} %}
-{% set offer_type_order = ['SUBSCRIPTION', 'FREE', 'RENT', 'BUY'] %}
+{% set offer_type_labels = {'THEATRICAL': '극장', 'SUBSCRIPTION': '정액제', 'FREE': '무료', 'RENT': '대여', 'BUY': '구매'} %}
+{% set offer_type_order = ['THEATRICAL', 'SUBSCRIPTION', 'FREE', 'RENT', 'BUY'] %}
 {% set default_offer_type_ns = namespace(value=none) %}
 {% for offer_type in offer_type_order %}
   {% if default_offer_type_ns.value is none and (movie.watch_providers | selectattr('offer_type', 'equalto', offer_type) | list) %}
@@ -36,7 +36,7 @@
     </div>
 
     <div class="detail-tags">
-      <span class="detail-tag">{{ movie.release_date or '미정' }}</span>
+      <span class="detail-tag">{{ movie.release_date or ('스트리밍' if movie.is_streaming else '미정') }}</span>
       {% if movie.runtime_minutes %}
         <span class="detail-tag">{{ movie.runtime_minutes }}분</span>
       {% endif %}
@@ -84,12 +84,12 @@
             {% if group %}
               <div class="ott-panel-group" data-ott-panel="{{ offer_type }}"{{ ' hidden' if offer_type != default_offer_type_ns.value else '' }}>
                 {% for provider in group %}
-                  {% set icon = ott_icons.get(provider.code, default_ott_icon) %}
+                  {% set icon = box_office_icon if provider.code == 'BOX_OFFICE' else ott_icons.get(provider.code, default_ott_icon) %}
                   <div class="ott-panel-row">
                     <span class="ott-panel-icon" style="background: {{ icon.color }}">{{ icon.text }}</span>
                     <span class="ott-panel-name">{{ provider.name }}</span>
                     {% if provider.content_url %}
-                      <a class="ott-panel-link" href="{{ provider.content_url }}" target="_blank" rel="noopener noreferrer">바로 보기</a>
+                      <a class="ott-panel-link" href="{{ provider.content_url }}" target="_blank" rel="noopener noreferrer">{{ provider.link_label | default('바로 보기', true) }}</a>
                     {% else %}
                       <span class="ott-panel-link ott-panel-link-disabled">바로 보기</span>
                     {% endif %}

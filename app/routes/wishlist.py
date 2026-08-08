@@ -7,8 +7,8 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from ..extensions import db
 from ..models import Movie, OTTAvailability, OTTProvider, UserMovieLibrary
 from ..movie_sync import get_or_create_movie
-from ..ott_icons import DEFAULT_OTT_ICON, OTT_ICONS
-from ..services.movie_catalog_query import serialize_movie_summary
+from ..ott_icons import BOX_OFFICE_ICON, DEFAULT_OTT_ICON, OTT_ICONS
+from ..services.movie_catalog_query import serialize_movie_summary, streaming_movie_ids
 
 wishlist_bp = Blueprint("wishlist", __name__, url_prefix="/wishlist")
 
@@ -40,16 +40,24 @@ def library():
     } if movie_ids else {}
 
     if ott_filter != "all":
-        try:
-            ott_provider_id = int(ott_filter)
-        except ValueError:
-            abort(400)
-        available_ids = {
-            row.movie_id for row in OTTAvailability.query.filter(
-                OTTAvailability.movie_id.in_(movie_ids),
-                OTTAvailability.provider_id == ott_provider_id,
-            ).all()
-        }
+        if ott_filter == "box-office":
+            available_ids = {
+                movie.id for movie in Movie.query.filter(
+                    Movie.id.in_(movie_ids),
+                    Movie.now_playing_rank.isnot(None),
+                ).all()
+            }
+        else:
+            try:
+                ott_provider_id = int(ott_filter)
+            except ValueError:
+                abort(400)
+            available_ids = {
+                row.movie_id for row in OTTAvailability.query.filter(
+                    OTTAvailability.movie_id.in_(movie_ids),
+                    OTTAvailability.provider_id == ott_provider_id,
+                ).all()
+            }
         movies_by_id = {mid: m for mid, m in movies_by_id.items() if mid in available_ids}
 
     if status == "wishlisted":
@@ -57,10 +65,14 @@ def library():
     else:
         remove_payload = {"watch_status": ""}
 
+    streaming_ids = streaming_movie_ids(list(movies_by_id))
     items = [
         {
             "movie": movies_by_id[e.movie_id],
-            "summary": serialize_movie_summary(movies_by_id[e.movie_id]),
+            "summary": serialize_movie_summary(
+                movies_by_id[e.movie_id],
+                is_streaming=e.movie_id in streaming_ids,
+            ),
         }
         for e in entries
         if e.movie_id in movies_by_id
@@ -78,6 +90,7 @@ def library():
         all_ott_providers=all_ott_providers,
         ott_icons=OTT_ICONS,
         default_ott_icon=DEFAULT_OTT_ICON,
+        box_office_icon=BOX_OFFICE_ICON,
         remove_payload=remove_payload,
     )
 
