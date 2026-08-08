@@ -7,6 +7,7 @@ from flask_login import current_user
 from jinja2 import ChoiceLoader, FileSystemLoader, PrefixLoader
 from sqlalchemy import URL
 from dotenv import load_dotenv
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from .extensions import db, login_manager, oauth
 from .ott_icons import DEFAULT_OTT_ICON, OTT_ICONS
@@ -15,6 +16,9 @@ from .ott_icons import DEFAULT_OTT_ICON, OTT_ICONS
 def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     load_dotenv(Path(__file__).resolve().parent.parent / ".env", override=False)
     app = Flask(__name__)
+    # nginx가 https를 처리하고 내부적으로 http로 전달하므로,
+    # X-Forwarded-Proto 헤더를 신뢰해 url_for(_external=True)가 https를 쓰도록 함
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-change-me")
     app.config["SQLALCHEMY_DATABASE_URI"] = URL.create(
         "postgresql+psycopg",
@@ -68,7 +72,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     from .routes.recommendations import recommendations_bp
     from .routes.search import search_bp
     from .routes.wishlist import wishlist_bp
-    from .cli import sync_popular_movies, upgrade_movie_catalog_schema
+    from .cli import sync_popular_movies, upgrade_movie_catalog_schema, upgrade_user_avatar_schema
 
     project_root = Path(__file__).resolve().parent.parent
     app.jinja_loader = ChoiceLoader([
@@ -79,6 +83,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     ])
     app.cli.add_command(sync_popular_movies)
     app.cli.add_command(upgrade_movie_catalog_schema)
+    app.cli.add_command(upgrade_user_avatar_schema)
 
     app.register_blueprint(pages_blueprint)
     app.register_blueprint(api_blueprint)
