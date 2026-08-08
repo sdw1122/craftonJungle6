@@ -75,7 +75,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     from .routes.wishlist import wishlist_bp
     from .routes.settings import settings_bp
 
-    from .cli import sync_popular_movies, upgrade_movie_catalog_schema
+    from .cli import sync_popular_movies, upgrade_movie_catalog_schema, upgrade_user_avatar_schema
 
     project_root = Path(__file__).resolve().parent.parent
     app.jinja_loader = ChoiceLoader([
@@ -86,6 +86,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     ])
     app.cli.add_command(sync_popular_movies)
     app.cli.add_command(upgrade_movie_catalog_schema)
+    app.cli.add_command(upgrade_user_avatar_schema)
 
     app.register_blueprint(pages_blueprint)
     app.register_blueprint(api_blueprint)
