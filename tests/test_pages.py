@@ -46,6 +46,7 @@ DETAIL_PAYLOAD = {
         }
     ],
     "now_playing_rank": None,
+    "is_streaming": True,
     "watch_providers": [{"name": "넷플릭스", "offer_type": "SUBSCRIPTION"}],
     "watch_provider_link": "https://example.com/providers",
 }
@@ -321,6 +322,23 @@ class PageTests(unittest.TestCase):
             'href="https://www.themoviedb.org/movie/10?language=ko-KR"',
             html,
         )
+
+    def test_streaming_only_detail_shows_streaming_instead_of_unknown_date(self):
+        payload = {
+            **DETAIL_PAYLOAD,
+            "release_date": None,
+            "is_streaming": True,
+        }
+        self.get_catalog_movie_record.return_value = MovieDetailRecord(
+            movie=SimpleNamespace(id=UUID("00000000-0000-0000-0000-000000000010")),
+            payload=payload,
+        )
+
+        response = self.client.get("/movies/10")
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('<span class="detail-tag">스트리밍</span>', html)
 
     def test_missing_database_movie_returns_404(self):
         self.get_catalog_movie_record.return_value = None

@@ -82,7 +82,7 @@
                 <span class="rankings-movie-copy">
                   <strong>{{ movie_title }}</strong>
                   <span>
-                    {{ movie.release_date[:4] if movie.release_date else '공개일 미정' }}
+                    {{ movie.release_date[:4] if movie.release_date else ('스트리밍' if movie.is_streaming else '공개일 미정') }}
                     {% if movie.providers %} · {{ movie.providers | map(attribute='name') | join(', ') }}{% endif %}
                   </span>
                 </span>

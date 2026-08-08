@@ -8,7 +8,7 @@ from ..extensions import db
 from ..models import Movie, OTTAvailability, OTTProvider, UserMovieLibrary
 from ..movie_sync import get_or_create_movie
 from ..ott_icons import BOX_OFFICE_ICON, DEFAULT_OTT_ICON, OTT_ICONS
-from ..services.movie_catalog_query import serialize_movie_summary
+from ..services.movie_catalog_query import serialize_movie_summary, streaming_movie_ids
 
 wishlist_bp = Blueprint("wishlist", __name__, url_prefix="/wishlist")
 
@@ -65,10 +65,14 @@ def library():
     else:
         remove_payload = {"watch_status": ""}
 
+    streaming_ids = streaming_movie_ids(list(movies_by_id))
     items = [
         {
             "movie": movies_by_id[e.movie_id],
-            "summary": serialize_movie_summary(movies_by_id[e.movie_id]),
+            "summary": serialize_movie_summary(
+                movies_by_id[e.movie_id],
+                is_streaming=e.movie_id in streaming_ids,
+            ),
         }
         for e in entries
         if e.movie_id in movies_by_id

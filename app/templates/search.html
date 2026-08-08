@@ -73,7 +73,7 @@
             </div>
             <a class="catalog-result-card-copy" href="{{ url_for('pages.movie_detail', tmdb_id=movie.tmdb_id) }}">
               <strong>{{ movie_title }}</strong>
-              <span>{{ movie.release_date[:4] if movie.release_date else '공개일 미정' }}</span>
+              <span>{{ movie.release_date[:4] if movie.release_date else ('스트리밍' if movie.is_streaming else '공개일 미정') }}</span>
             </a>
           </article>
         {% endfor %}

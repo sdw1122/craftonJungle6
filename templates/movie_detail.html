@@ -36,7 +36,7 @@
     </div>
 
     <div class="detail-tags">
-      <span class="detail-tag">{{ movie.release_date or '미정' }}</span>
+      <span class="detail-tag">{{ movie.release_date or ('스트리밍' if movie.is_streaming else '미정') }}</span>
       {% if movie.runtime_minutes %}
         <span class="detail-tag">{{ movie.runtime_minutes }}분</span>
       {% endif %}

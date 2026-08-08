@@ -51,7 +51,7 @@
             <a class="library-row-info" href="{{ url_for('pages.movie_detail', tmdb_id=item.movie.tmdb_id) }}">
               <strong>{{ item.summary.title }}</strong>
               <span class="library-row-meta">
-                영화{{ ' · ' ~ item.movie.release_date.year if item.movie.release_date else '' }}
+                영화{% if item.movie.release_date %} · {{ item.movie.release_date.year }}{% elif item.summary.is_streaming %} · 스트리밍{% endif %}
               </span>
             </a>
             <form method="post" action="{{ url_for('wishlist.upsert', tmdb_id=item.movie.tmdb_id) }}" class="library-row-remove-form">
