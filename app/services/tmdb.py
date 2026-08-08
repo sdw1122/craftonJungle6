@@ -166,7 +166,7 @@ class TMDBClient:
         return self._get(
             f"/movie/{tmdb_id}",
             language="ko-KR",
-            append_to_response="credits",
+            append_to_response="credits,release_dates",
         )
 
     def get_watch_providers(self, tmdb_id: int) -> dict[str, Any]:
@@ -190,6 +190,27 @@ def normalize_movie_detail(
         for person in credits.get("crew") or []
         if person.get("job") == "Director"
     ]
+
+    kr_release_results = [
+        result
+        for result in (movie.get("release_dates") or {}).get("results") or []
+        if result.get("iso_3166_1") == "KR"
+    ]
+    kr_release_dates = [
+        release
+        for result in kr_release_results
+        for release in result.get("release_dates") or []
+    ]
+    kr_release_date = None
+    for release_type in (3, 2):
+        theatrical_dates = sorted(
+            release["release_date"].split("T", 1)[0]
+            for release in kr_release_dates
+            if release.get("type") == release_type and release.get("release_date")
+        )
+        if theatrical_dates:
+            kr_release_date = theatrical_dates[0]
+            break
 
     kr_providers = (provider_response.get("results") or {}).get("KR") or {}
     provider_groups = {
@@ -215,7 +236,7 @@ def normalize_movie_detail(
         "title": movie.get("title"),
         "original_title": movie.get("original_title"),
         "overview": movie.get("overview"),
-        "release_date": movie.get("release_date") or None,
+        "release_date": kr_release_date,
         "runtime_minutes": movie.get("runtime"),
         "original_language": movie.get("original_language"),
         "poster_url": TMDBClient.image_url(movie.get("poster_path")),

@@ -22,7 +22,7 @@ from app.services.movie_catalog import (
     collect_now_playing_movies,
     collect_popular_movies,
 )
-from app.services.tmdb import TMDBClient
+from app.services.tmdb import TMDBClient, normalize_movie_detail
 
 
 class FakeAI:
@@ -269,6 +269,58 @@ class MovieCatalogCollectionTests(unittest.TestCase):
             region="KR",
             page=2,
         )
+
+    def test_movie_detail_requests_country_release_dates(self):
+        tmdb = TMDBClient("test-token")
+        with patch.object(tmdb, "_get", return_value={"id": 10}) as get:
+            tmdb.get_movie(10)
+
+        get.assert_called_once_with(
+            "/movie/10",
+            language="ko-KR",
+            append_to_response="credits,release_dates",
+        )
+
+    def test_normalize_movie_detail_prefers_korean_theatrical_release(self):
+        movie = {
+            "id": 10,
+            "release_date": "2025-01-01",
+            "release_dates": {
+                "results": [
+                    {
+                        "iso_3166_1": "US",
+                        "release_dates": [{"type": 3, "release_date": "2025-01-01T00:00:00.000Z"}],
+                    },
+                    {
+                        "iso_3166_1": "KR",
+                        "release_dates": [
+                            {"type": 2, "release_date": "2025-02-01T00:00:00.000Z"},
+                            {"type": 3, "release_date": "2025-02-10T00:00:00.000Z"},
+                        ],
+                    },
+                ],
+            },
+        }
+
+        normalized = normalize_movie_detail(movie, {})
+
+        self.assertEqual(normalized["release_date"], "2025-02-10")
+
+    def test_normalize_movie_detail_does_not_fallback_to_foreign_release(self):
+        movie = {
+            "id": 10,
+            "release_date": "2025-01-01",
+            "release_dates": {
+                "results": [{
+                    "iso_3166_1": "US",
+                    "release_dates": [{"type": 3, "release_date": "2025-01-01T00:00:00.000Z"}],
+                }],
+            },
+        }
+
+        normalized = normalize_movie_detail(movie, {})
+
+        self.assertIsNone(normalized["release_date"])
 
     def test_empty_now_playing_results_fail_before_persistence(self):
         class FakeTMDB:
