@@ -122,6 +122,14 @@ class TMDBClient:
             page=page,
         )
 
+    def get_now_playing_movies(self, page: int = 1) -> dict[str, Any]:
+        return self._get(
+            "/movie/now_playing",
+            language="ko-KR",
+            region="KR",
+            page=page,
+        )
+
     def discover_movies(
         self,
         *,

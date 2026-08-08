@@ -45,6 +45,7 @@ DETAIL_PAYLOAD = {
             "billing_order": 0,
         }
     ],
+    "now_playing_rank": None,
     "watch_providers": [{"name": "넷플릭스", "offer_type": "SUBSCRIPTION"}],
     "watch_provider_link": "https://example.com/providers",
 }
@@ -58,6 +59,7 @@ class PageTests(unittest.TestCase):
         self.list_patcher = patch("app.routes.search.list_catalog_movies")
         self.detail_patcher = patch("app.routes.pages.get_catalog_movie_record")
         self.ranked_patcher = patch("app.routes.pages.list_ranked_movies")
+        self.now_playing_patcher = patch("app.routes.pages.list_now_playing_movies")
         self.random_patcher = patch("app.routes.pages.list_random_movies")
         self.search_ranked_patcher = patch("app.routes.search.list_ranked_movies")
         self.ott_rankings_patcher = patch("app.routes.pages.list_ott_rankings")
@@ -70,6 +72,7 @@ class PageTests(unittest.TestCase):
         self.list_catalog_movies = self.list_patcher.start()
         self.get_catalog_movie_record = self.detail_patcher.start()
         self.list_ranked_movies = self.ranked_patcher.start()
+        self.list_now_playing_movies = self.now_playing_patcher.start()
         self.list_random_movies = self.random_patcher.start()
         self.search_list_ranked_movies = self.search_ranked_patcher.start()
         self.list_ott_rankings = self.ott_rankings_patcher.start()
@@ -89,6 +92,7 @@ class PageTests(unittest.TestCase):
             payload=DETAIL_PAYLOAD,
         )
         self.list_ranked_movies.return_value = POPULAR_MOVIES
+        self.list_now_playing_movies.return_value = [POPULAR_MOVIES[0]]
         self.list_random_movies.return_value = POPULAR_MOVIES
         self.search_list_ranked_movies.return_value = POPULAR_MOVIES
         self.list_ott_rankings.return_value = [{
@@ -107,6 +111,7 @@ class PageTests(unittest.TestCase):
         self.list_patcher.stop()
         self.detail_patcher.stop()
         self.ranked_patcher.stop()
+        self.now_playing_patcher.stop()
         self.random_patcher.stop()
         self.search_ranked_patcher.stop()
         self.ott_rankings_patcher.stop()
@@ -122,11 +127,13 @@ class PageTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.list_catalog_movies.assert_not_called()
         self.list_ranked_movies.assert_called_once_with(limit=12)
+        self.list_now_playing_movies.assert_called_once_with(limit=12)
         self.list_random_movies.assert_called_once_with(limit=50)
         self.list_ott_rankings.assert_called_once_with(limit=12)
         self.assertIn('role="tablist"', html)
         self.assertIn('data-ranking-tab="all"', html)
         self.assertIn('data-ranking-tab="subscriptions"', html)
+        self.assertIn('data-ranking-tab="box-office"', html)
         self.assertIn('data-ranking-tab="provider-1"', html)
         self.assertIn("내 구독 OTT", html)
         self.assertIn("넷플릭스", html)
@@ -175,6 +182,20 @@ class PageTests(unittest.TestCase):
             html,
         )
 
+    def test_rankings_page_renders_box_office_ranking(self):
+        response = self.client.get("/rankings?ott=box-office")
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.list_now_playing_movies.assert_called_once_with(limit=50)
+        self.list_ranked_movies.assert_not_called()
+        self.assertIn("박스오피스 랭킹", html)
+        self.assertIn("TMDB 기준 한국 극장 상영작 인기순", html)
+        self.assertIn(
+            'class="rankings-category-link active" href="/rankings?ott=box-office"',
+            html,
+        )
+
     def test_guest_subscription_rankings_prompt_for_login(self):
         response = self.client.get("/rankings?ott=subscriptions")
         html = response.get_data(as_text=True)
@@ -186,6 +207,7 @@ class PageTests(unittest.TestCase):
 
     def test_root_ranking_carousel_pages_twelve_movies_by_three(self):
         self.list_ott_rankings.return_value = []
+        self.list_now_playing_movies.return_value = []
         self.list_ranked_movies.return_value = [
             {
                 **POPULAR_MOVIES[0],
@@ -271,6 +293,34 @@ class PageTests(unittest.TestCase):
         self.assertIn("배우 이름", html)
         self.assertIn("넷플릭스", html)
         self.assertGreaterEqual(html.count("disabled"), 8)
+
+    def test_now_playing_detail_links_to_tmdb(self):
+        payload = {
+            **DETAIL_PAYLOAD,
+            "now_playing_rank": 1,
+            "watch_providers": [{
+                "name": "박스오피스",
+                "code": "BOX_OFFICE",
+                "offer_type": "THEATRICAL",
+                "content_url": "https://www.themoviedb.org/movie/10?language=ko-KR",
+            }],
+        }
+        self.get_catalog_movie_record.return_value = MovieDetailRecord(
+            movie=SimpleNamespace(id=UUID("00000000-0000-0000-0000-000000000010")),
+            payload=payload,
+        )
+
+        response = self.client.get("/movies/10")
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("극장", html)
+        self.assertIn("박스오피스", html)
+        self.assertIn("바로 보기", html)
+        self.assertIn(
+            'href="https://www.themoviedb.org/movie/10?language=ko-KR"',
+            html,
+        )
 
     def test_missing_database_movie_returns_404(self):
         self.get_catalog_movie_record.return_value = None

@@ -96,6 +96,7 @@ def _serialize_ranked_movies(movies: list[Movie]) -> list[dict]:
     for movie in movies:
         payload = serialize_movie_summary(movie)
         payload["popular_rank"] = movie.popular_rank
+        payload["now_playing_rank"] = movie.now_playing_rank
         payload["providers"] = providers_by_movie.get(movie.id, [])
         results.append(payload)
     return results
@@ -120,6 +121,21 @@ def list_ranked_movies(*, limit: int = 3, provider_ids: list[int] | None = None)
         query
         .options(selectinload(Movie.titles))
         .order_by(Movie.popular_rank, Movie.tmdb_id)
+        .limit(limit)
+        .all()
+    )
+    return _serialize_ranked_movies(movies)
+
+
+def list_now_playing_movies(*, limit: int = 50) -> list[dict]:
+    movies = (
+        Movie.query
+        .filter(
+            Movie.tmdb_id.isnot(None),
+            Movie.now_playing_rank.isnot(None),
+        )
+        .options(selectinload(Movie.titles))
+        .order_by(Movie.now_playing_rank, Movie.tmdb_id)
         .limit(limit)
         .all()
     )
@@ -378,6 +394,13 @@ def get_catalog_movie_record(tmdb_id: int) -> MovieDetailRecord | None:
         }
         for item in availability
     ]
+    if movie.now_playing_rank is not None:
+        watch_providers.insert(0, {
+            "name": "박스오피스",
+            "code": "BOX_OFFICE",
+            "offer_type": "THEATRICAL",
+            "content_url": f"https://www.themoviedb.org/movie/{movie.tmdb_id}?language=ko-KR",
+        })
 
     payload = {
         **serialize_movie_summary(movie),
@@ -389,6 +412,7 @@ def get_catalog_movie_record(tmdb_id: int) -> MovieDetailRecord | None:
         ],
         "directors": directors,
         "cast": cast,
+        "now_playing_rank": movie.now_playing_rank,
         "watch_providers": watch_providers,
         "watch_provider_link": next(
             (item.content_url for item in availability if item.content_url),

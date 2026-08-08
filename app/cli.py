@@ -18,7 +18,7 @@ from .services.movie_catalog import MovieCatalogSyncError, sync_popular_movie_ca
 )
 @with_appcontext
 def sync_popular_movies(limit: int) -> None:
-    """TMDB 인기 영화를 기존 영화 카탈로그에 동기화합니다."""
+    """TMDB 인기 영화와 한국 현재 상영작을 영화 카탈로그에 동기화합니다."""
     try:
         result = sync_popular_movie_catalog(
             access_token=os.getenv("TMDB_ACCESS_TOKEN"),
@@ -33,6 +33,7 @@ def sync_popular_movies(limit: int) -> None:
     click.echo(
         "동기화 완료: "
         f"요청 {result.requested}편, "
+        f"현재 상영작 {result.now_playing_requested}편, "
         f"신규 {result.created}편, "
         f"갱신 {result.updated}편, "
         f"제목 {result.titles_synced}건, "
@@ -53,8 +54,16 @@ def upgrade_movie_catalog_schema() -> None:
             "ALTER TABLE movies ADD COLUMN IF NOT EXISTS backdrop_url TEXT"
         ))
         db.session.execute(db.text(
+            "ALTER TABLE movies ADD COLUMN IF NOT EXISTS now_playing_rank SMALLINT "
+            "CHECK (now_playing_rank IS NULL OR now_playing_rank > 0)"
+        ))
+        db.session.execute(db.text(
             "CREATE INDEX IF NOT EXISTS idx_movies_popular_rank "
             "ON movies (popular_rank) WHERE popular_rank IS NOT NULL"
+        ))
+        db.session.execute(db.text(
+            "CREATE INDEX IF NOT EXISTS idx_movies_now_playing_rank "
+            "ON movies (now_playing_rank) WHERE now_playing_rank IS NOT NULL"
         ))
         db.session.commit()
     except SQLAlchemyError as exc:

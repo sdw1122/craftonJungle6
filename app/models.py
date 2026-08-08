@@ -133,6 +133,7 @@ class Movie(db.Model):
     poster_url = db.Column(db.Text)
     backdrop_url = db.Column(db.Text)
     popular_rank = db.Column(db.SmallInteger)
+    now_playing_rank = db.Column(db.SmallInteger)
     created_at = db.Column(db.DateTime(timezone=True), server_default=db.text("CURRENT_TIMESTAMP"))
     updated_at = db.Column(db.DateTime(timezone=True), server_default=db.text("CURRENT_TIMESTAMP"))
 

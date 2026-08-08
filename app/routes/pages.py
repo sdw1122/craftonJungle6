@@ -3,11 +3,12 @@ from flask_login import current_user, login_required
 
 
 from ..models import MovieReview, UserMovieLibrary
-from ..ott_icons import DEFAULT_OTT_ICON, OTT_ICONS
+from ..ott_icons import BOX_OFFICE_ICON, DEFAULT_OTT_ICON, OTT_ICONS
 from ..services.movie_catalog_query import (
     active_subscription_provider_ids,
     get_catalog_movie_record,
     list_active_ott_providers,
+    list_now_playing_movies,
     list_ott_rankings,
     list_personalized_movies,
     list_random_movies,
@@ -48,6 +49,7 @@ def index():
             else []
         )
         ott_rankings = list_ott_rankings(limit=12)
+        box_office_movies = list_now_playing_movies(limit=12)
         ranking_tabs = [
             {
                 "key": "all",
@@ -70,6 +72,17 @@ def index():
                 "icon": {"text": "MY", "color": "#7657d8"},
                 "requires_login": not current_user.is_authenticated,
                 "requires_subscription": current_user.is_authenticated and not subscription_provider_ids,
+            },
+            {
+                "key": "box-office",
+                "label": "박스오피스",
+                "title": "박스오피스 TOP 12",
+                "description": "TMDB 기준 한국 극장 상영작 인기순이에요.",
+                "movies": box_office_movies,
+                "empty_message": "동기화된 한국 현재 상영작이 아직 없습니다.",
+                "icon": BOX_OFFICE_ICON,
+                "requires_login": False,
+                "requires_subscription": False,
             },
         ]
         for ranking in ott_rankings:
@@ -124,6 +137,10 @@ def rankings():
         else:
             requires_login = True
             movies = []
+    elif selected_ott == "box-office":
+        ranking_title = "박스오피스 랭킹"
+        ranking_description = "TMDB 기준 한국 극장 상영작 인기순이에요."
+        movies = list_now_playing_movies(limit=50)
     elif selected_ott.isdigit():
         provider_id = int(selected_ott)
         selected_provider = next(
@@ -158,6 +175,7 @@ def rankings():
         wishlisted_movie_ids=wishlisted_movie_ids,
         ott_icons=OTT_ICONS,
         default_ott_icon=DEFAULT_OTT_ICON,
+        box_office_icon=BOX_OFFICE_ICON,
     )
 
 
@@ -214,6 +232,7 @@ def movie_detail(tmdb_id: int):
         review_count=review_count,
         ott_icons=OTT_ICONS,
         default_ott_icon=DEFAULT_OTT_ICON,
+        box_office_icon=BOX_OFFICE_ICON,
     )
 
 

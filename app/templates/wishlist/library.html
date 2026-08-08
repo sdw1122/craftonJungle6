@@ -16,6 +16,11 @@
       <div class="library-ott-tabs">
         <a href="{{ url_for('wishlist.library', status=status, ott='all') }}"
           class="library-ott-tab{{ ' active' if ott_filter == 'all' else '' }}">전체</a>
+        <a href="{{ url_for('wishlist.library', status=status, ott='box-office') }}"
+          class="library-ott-tab{{ ' active' if ott_filter == 'box-office' else '' }}">
+          <span class="library-ott-tab-icon" style="background: {{ box_office_icon.color }}">{{ box_office_icon.text }}</span>
+          박스오피스
+        </a>
         {% for provider in all_ott_providers %}
           {% set icon = ott_icons.get(provider.code, default_ott_icon) %}
           <a href="{{ url_for('wishlist.library', status=status, ott=provider.id) }}"

@@ -38,11 +38,13 @@ docker compose down -v
 docker compose exec web flask upgrade-movie-catalog-schema
 ```
 
-`.env`에 `TMDB_ACCESS_TOKEN`을 설정한 뒤 인기 영화와 상세정보를 동기화합니다.
+`.env`에 `TMDB_ACCESS_TOKEN`을 설정한 뒤 인기 영화, 한국 현재 상영작 전체와 상세정보를 동기화합니다.
 
 ```powershell
 docker compose exec web flask sync-popular-movies --limit 100
 ```
 
-동기화 명령만 TMDB API를 호출하며 영화, 한국어 제목, 인기 순위, 장르,
-감독·출연진과 국내 OTT 제공 정보를 DB에 저장합니다.
+동기화 명령만 TMDB API를 호출하며 영화, 한국어 제목, 인기 순위, 한국 현재 상영작
+전체의 인기순, 장르, 감독·출연진과 국내 OTT 제공 정보를 DB에 저장합니다. 랭킹 화면은
+그중 상위 50편을 표시합니다. 화면의
+`박스오피스`는 실제 관객·매출 순위가 아니라 TMDB 기준 한국 극장 상영작 인기순입니다.

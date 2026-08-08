@@ -21,6 +21,10 @@
           <span class="rankings-category-symbol rankings-category-my" aria-hidden="true">MY</span>
           <span>내 구독 OTT</span>
         </a>
+        <a class="rankings-category-link{{ ' active' if selected_ott == 'box-office' else '' }}" href="{{ url_for('pages.rankings', ott='box-office') }}">
+          <span class="rankings-category-symbol" style="--provider-color: {{ box_office_icon.color }}" aria-hidden="true">{{ box_office_icon.text }}</span>
+          <span>박스오피스</span>
+        </a>
         {% for provider in providers %}
           {% set icon = ott_icons.get(provider.code, default_ott_icon) %}
           <a class="rankings-category-link{{ ' active' if selected_ott == provider.id|string else '' }}" href="{{ url_for('pages.rankings', ott=provider.id) }}">
@@ -31,7 +35,11 @@
       </nav>
     </aside>
 
-    <section class="rankings-content" aria-label="OTT 영화 순위">
+    <section class="rankings-content" aria-label="영화 순위">
+      <header class="rankings-content-header">
+        <h1>{{ ranking_title }}</h1>
+        <p>{{ ranking_description }}</p>
+      </header>
       {% if requires_login %}
         <div class="rankings-page-state">
           <span aria-hidden="true">✦</span>
