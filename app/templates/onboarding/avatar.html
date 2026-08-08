@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}프로필 이미지 선택 - 키노라이츠{% endblock %}
+{% block content %}
+  <section class="card onboarding-card">
+    <div class="progress-bar"><span style="width: 20%"></span></div>
+    <h1>기본 프로필을 선택해주세요</h1>
+
+    {% if error %}<p class="field-error">{{ error }}</p>{% endif %}
+
+    <form method="post" class="avatar-grid">
+      {% for key in ("image1", "image2", "image3", "image4", "image5", "image6", "image7") %}
+        <button type="submit" name="avatar_key" value="{{ key }}" class="avatar-option">
+          <img src="{{ url_for('static', filename='images/profiles/' ~ key ~ '.png') }}" alt="기본 프로필 {{ loop.index }}">
+        </button>
+      {% endfor %}
+    </form>
+  </section>
+{% endblock %}

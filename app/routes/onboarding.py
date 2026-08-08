@@ -25,6 +25,19 @@ def intro():
     return render_template("onboarding/intro.html")
 
 
+@onboarding_bp.route("/avatar", methods=["GET", "POST"])
+@login_required
+def avatar():
+    if request.method == "POST":
+        avatar_key = request.form.get("avatar_key")
+        if avatar_key not in User.AVATAR_KEYS:
+            return render_template("onboarding/avatar.html", error="프로필 이미지를 선택해주세요."), 400
+        current_user.avatar_key = avatar_key
+        db.session.commit()
+        return redirect(url_for("onboarding.gender"))
+    return render_template("onboarding/avatar.html")
+
+
 @onboarding_bp.route("/gender", methods=["GET", "POST"])
 @login_required
 def gender():

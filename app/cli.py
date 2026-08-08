@@ -59,3 +59,33 @@ def upgrade_movie_catalog_schema() -> None:
         raise click.ClickException("영화 카탈로그 DB 마이그레이션에 실패했습니다.") from exc
 
     click.echo("영화 카탈로그 DB 마이그레이션이 완료되었습니다.")
+
+
+@click.command("upgrade-user-avatar-schema")
+@with_appcontext
+def upgrade_user_avatar_schema() -> None:
+    """기존 DB에 사용자 기본 프로필 선택용 컬럼을 추가합니다."""
+    try:
+        db.session.execute(db.text(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_key VARCHAR(20)"
+        ))
+        db.session.execute(db.text(
+            "DO $migration$ "
+            "BEGIN "
+            "IF NOT EXISTS ("
+            "  SELECT 1 FROM pg_constraint "
+            "  WHERE conname = 'users_avatar_key_check' AND conrelid = 'users'::regclass"
+            ") THEN "
+            "  ALTER TABLE users ADD CONSTRAINT users_avatar_key_check "
+            "  CHECK (avatar_key IS NULL OR avatar_key IN "
+            "  ('image1', 'image2', 'image3', 'image4', 'image5', 'image6', 'image7')); "
+            "END IF; "
+            "END; "
+            "$migration$;"
+        ))
+        db.session.commit()
+    except SQLAlchemyError as exc:
+        db.session.rollback()
+        raise click.ClickException("사용자 프로필 DB 마이그레이션에 실패했습니다.") from exc
+
+    click.echo("사용자 프로필 DB 마이그레이션이 완료되었습니다.")

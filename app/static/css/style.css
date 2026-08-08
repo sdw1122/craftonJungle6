@@ -152,6 +152,8 @@ body {
   border: none;
   font-weight: 700;
   cursor: pointer;
+  padding: 0;
+  overflow: hidden;
 }
 
 .avatar-button:hover {
@@ -785,6 +787,43 @@ h1 {
 .option-button:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+.avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.avatar-option {
+  padding: 0;
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: none;
+  cursor: pointer;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+}
+
+.avatar-option img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-option:hover {
+  border-color: var(--accent);
+}
+
+.avatar-button img,
+.avatar-circle img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 999px;
 }
 
 .date-select-row {

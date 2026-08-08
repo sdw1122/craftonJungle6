@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}키노라이츠 클론{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=18">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20">
   </head>
   <body class="{% block body_class %}{% endblock %}">
     <header class="site-header">
@@ -49,11 +49,21 @@
 
           <div class="user-menu">
             <button type="button" class="avatar-button" id="user-menu-trigger" aria-haspopup="true" aria-expanded="false">
-              {{ current_user.nickname[0] }}
+              {% if current_user.avatar_key %}
+                <img src="{{ url_for('static', filename='images/profiles/' ~ current_user.avatar_key ~ '.png') }}" alt="">
+              {% else %}
+                {{ current_user.nickname[0] }}
+              {% endif %}
             </button>
             <div class="user-dropdown" id="user-dropdown" hidden>
               <a class="user-dropdown-profile" href="#">
-                <span class="avatar-circle">{{ current_user.nickname[0] }}</span>
+                <span class="avatar-circle">
+                  {% if current_user.avatar_key %}
+                    <img src="{{ url_for('static', filename='images/profiles/' ~ current_user.avatar_key ~ '.png') }}" alt="">
+                  {% else %}
+                    {{ current_user.nickname[0] }}
+                  {% endif %}
+                </span>
                 <span class="profile-nickname">{{ current_user.nickname }}</span>
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                   <polyline points="9 18 15 12 9 6"></polyline>

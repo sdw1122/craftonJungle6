@@ -11,6 +11,7 @@ class User(db.Model, UserMixin):
     __tablename__ = "users"
 
     GENDERS = ("MALE", "FEMALE", "OTHER", "UNDISCLOSED")
+    AVATAR_KEYS = ("image1", "image2", "image3", "image4", "image5", "image6", "image7")
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, server_default=db.text("gen_random_uuid()"))
     email = db.Column(CITEXT, unique=True)
@@ -18,6 +19,7 @@ class User(db.Model, UserMixin):
     status = db.Column(db.String(20), nullable=False, default="ACTIVE")
     gender = db.Column(db.String(20))
     birth_date = db.Column(db.Date)
+    avatar_key = db.Column(db.String(20))
     onboarding_completed_at = db.Column(db.DateTime(timezone=True))
     email_verified_at = db.Column(db.DateTime(timezone=True))
     last_login_at = db.Column(db.DateTime(timezone=True))
